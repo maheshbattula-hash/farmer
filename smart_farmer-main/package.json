@@ -1,0 +1,36 @@
+{
+  "name": "smart-farmer-platform",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "predev:api": "node scripts/dev/free-port.js",
+    "dev:api": "npm --workspace apps/api run start:dev",
+    "build:api": "npm --workspace apps/api run build",
+    "start:api": "npm --workspace apps/api run start",
+    "typecheck:api": "npm --workspace apps/api run typecheck",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:web:lan": "npm --workspace apps/web run dev:lan",
+    "build:web": "npm --workspace apps/web run build",
+    "start:web": "npm --workspace apps/web run start",
+    "start:web:lan": "npm --workspace apps/web run start:lan",
+    "typecheck:web": "npm --workspace apps/web run typecheck",
+    "seed:test-users": "npm --workspace apps/api run seed:test-users",
+    "dev:mobile": "npm --workspace apps/mobile run start",
+    "dev:mobile:clear": "npm --workspace apps/mobile run start:clear",
+    "dev:mobile:fix": "powershell -ExecutionPolicy Bypass -File .\\scripts\\dev\\start-mobile-clear.ps1",
+    "dev:mobile:lan": "npm --workspace apps/mobile run start:lan",
+    "dev:mobile:tunnel": "npm --workspace apps/mobile run start:tunnel",
+    "start:mobile": "npm run dev:mobile",
+    "start:mobile:clear": "npm run dev:mobile:clear",
+    "start:mobile:fix": "npm run dev:mobile:fix",
+    "start:mobile:lan": "npm run dev:mobile:lan",
+    "start:mobile:tunnel": "npm run dev:mobile:tunnel"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

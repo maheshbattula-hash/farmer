@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Smart Farmer Platform",
+    "slug": "smart-farmer-platform",
+    "version": "1.1.0",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-light-native.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#f7f6f1",
+      "dark": {
+        "image": "./assets/splash-dark-native.png",
+        "backgroundColor": "#102116"
+      }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.smartfarmer.platform",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Smart Farmer uses the camera to capture crop images for disease prediction.",
+        "NSPhotoLibraryUsageDescription": "Smart Farmer uses your photo library to attach crop images.",
+        "NSLocationWhenInUseUsageDescription": "Smart Farmer uses your location to find nearby buyers and show local demand.",
+        "NSUserNotificationsUsageDescription": "Smart Farmer uses notifications for order and market alerts."
+      }
+    },
+    "android": {
+      "package": "com.smartfarmer.platform",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#f7f6f1"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

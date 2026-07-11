@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+    <div class="surface-panel reveal rounded-[1.8rem] px-5 py-6 sm:px-7 sm:py-8">
+        <span class="section-kicker">
+            <i class="fa-solid fa-lock"></i>
+            {{ t('checkout.kicker', 'Secure checkout') }}
+        </span>
+        <h1 class="mt-4 font-display text-3xl font-semibold text-soil sm:text-[2.7rem]">{{ t('checkout.title', 'Complete your purchase') }}</h1>
+        <p class="mt-3 max-w-xl text-sm leading-6 text-ink/70">Sandbox payment gateway is enabled for development. Choose UPI, card, or net banking and the order will move into the confirmed pipeline with invoice + tracking metadata.</p>
+
+        <div class="mt-8 space-y-4">
+            <div class="metric-card">
+                <p class="metric-label">{{ t('checkout.crop', 'Crop') }}</p>
+                <p class="mt-2 font-display text-[2rem] font-semibold text-soil">{{ order.crop_name }}</p>
+                <p class="mt-2 text-sm text-ink/65">{{ t('checkout.farmer', 'Farmer') }}: {{ order.farmer_name }}</p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="metric-card">
+                    <p class="metric-label">{{ t('checkout.quantity', 'Quantity') }}</p>
+                    <p class="metric-value">{{ order.quantity }}</p>
+                    <p class="mt-2 text-sm text-ink/65">{{ t('checkout.quantity_desc', 'Requested order volume.') }}</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-label">{{ t('checkout.unit_price', 'Unit price') }}</p>
+                    <p class="metric-value">&#8377;{{ "%.2f"|format(order.total_price / (order.quantity or 1)) }}</p>
+                    <p class="mt-2 text-sm text-ink/65">{{ t('checkout.unit_price_desc', 'Calculated from the selected listing.') }}</p>
+                </div>
+            </div>
+            <div class="surface-card rounded-[1.35rem] p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="metric-label">{{ t('checkout.total', 'Total amount') }}</p>
+                        <p class="mt-2 font-display text-[2.35rem] font-semibold text-soil">&#8377;{{ "%.2f"|format(order.total_price) }}</p>
+                    </div>
+                    <span class="badge-app {% if order.payment_status == 'confirmed' %}badge-success{% else %}badge-warning{% endif %}"><i class="fa-solid fa-shield"></i> {{ order.payment_status or 'pending' }}</span>
+                </div>
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-2xl bg-mist/70 p-3">
+                        <p class="metric-label">{{ t('checkout.delivery_eta', 'Estimated delivery') }}</p>
+                        <p class="mt-2 font-bold text-soil">{{ order.estimated_delivery or '--' }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-mist/70 p-3">
+                        <p class="metric-label">{{ t('checkout.window', 'Fulfillment window') }}</p>
+                        <p class="mt-2 font-bold text-soil">{{ order.fulfillment_window or '--' }}</p>
+                    </div>
+                </div>
+                {% if order.delivery_address %}
+                <p class="mt-4 text-sm leading-6 text-ink/65"><strong>{{ t('checkout.address', 'Delivery address') }}:</strong> {{ order.delivery_address }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="surface-panel reveal rounded-[1.8rem] px-5 py-6 sm:px-7 sm:py-8">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <span class="section-kicker">
+                    <i class="fa-solid fa-credit-card"></i>
+                    Dev sandbox gateway
+                </span>
+                <h2 class="mt-3 font-display text-[1.9rem] font-semibold text-soil">{{ t('checkout.payment.title', 'Confirm payment') }}</h2>
+                <p class="mt-2 text-sm leading-6 text-ink/68">This checkout simulates successful UPI, card, and net banking collections. It writes provider, reference, and method-specific metadata into the order invoice.</p>
+            </div>
+            <div class="rounded-2xl bg-soil px-3 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-white">Sandbox</div>
+        </div>
+
+        <form action="{{ url_for('confirm_payment') }}" method="POST" class="mt-6 space-y-5" id="dev-payment-form">
+            <input type="hidden" name="order_id" value="{{ order.id }}">
+
+            <div class="rounded-[1.25rem] border border-soil/10 bg-mist/60 p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.18em] text-ink/45">Gateway methods</p>
+                <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                    <label class="rounded-[1.2rem] border border-soil/10 bg-white/85 p-4 text-sm font-semibold text-soil shadow-sm">
+                        <input type="radio" name="payment_method" value="UPI" checked class="mr-2 align-middle"> UPI
+                        <p class="mt-2 text-xs leading-5 text-ink/60">PhonePe, GPay, Paytm, BHIM style sandbox flow.</p>
+                    </label>
+                    <label class="rounded-[1.2rem] border border-soil/10 bg-white/85 p-4 text-sm font-semibold text-soil shadow-sm">
+                        <input type="radio" name="payment_method" value="Card" class="mr-2 align-middle"> Card
+                        <p class="mt-2 text-xs leading-5 text-ink/60">Visa, Mastercard, or RuPay test authorization.</p>
+                    </label>
+                    <label class="rounded-[1.2rem] border border-soil/10 bg-white/85 p-4 text-sm font-semibold text-soil shadow-sm">
+                        <input type="radio" name="payment_method" value="Net Banking" class="mr-2 align-middle"> Net Banking
+                        <p class="mt-2 text-xs leading-5 text-ink/60">Simulated bank redirect with bank session reference.</p>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="field-label" for="payment_provider">Provider / bank</label>
+                <select id="payment_provider" class="select-shell" name="payment_provider" data-default-upi="PhonePe" data-default-card="Visa Test" data-default-bank="HDFC Bank">
+                    <option value="PhonePe">PhonePe</option>
+                    <option value="Google Pay">Google Pay</option>
+                    <option value="Paytm">Paytm</option>
+                    <option value="BHIM">BHIM</option>
+                    <option value="Razorpay">Razorpay</option>
+                </select>
+            </div>
+
+            <div class="payment-panel" data-payment-panel="UPI">
+                <div>
+                    <label class="field-label" for="upi_id">UPI ID</label>
+                    <input id="upi_id" class="input-shell" type="text" name="upi_id" value="demo@upi" placeholder="demo@upi">
+                </div>
+                <p class="mt-2 text-xs font-semibold text-ink/55">Dev tip: any UPI PIN is accepted in sandbox mode.</p>
+            </div>
+
+            <div class="payment-panel hidden" data-payment-panel="Card">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="card_name">Card holder</label>
+                        <input id="card_name" class="input-shell" type="text" name="card_name" placeholder="Demo Farmer Buyer">
+                    </div>
+                    <div>
+                        <label class="field-label" for="card_expiry">Expiry</label>
+                        <input id="card_expiry" class="input-shell" type="text" name="card_expiry" placeholder="12/30">
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-[1fr_10rem] mt-4">
+                    <div>
+                        <label class="field-label" for="card_number">Card number</label>
+                        <input id="card_number" class="input-shell" type="text" name="card_number" placeholder="4111 1111 1111 1111">
+                    </div>
+                    <div>
+                        <label class="field-label" for="card_cvv">CVV</label>
+                        <input id="card_cvv" class="input-shell" type="password" name="card_cvv" placeholder="123">
+                    </div>
+                </div>
+                <p class="mt-2 text-xs font-semibold text-ink/55">Only the last 4 digits are stored; CVV stays transient in the sandbox form.</p>
+            </div>
+
+            <div class="payment-panel hidden" data-payment-panel="Net Banking">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="bank_name">Bank name</label>
+                        <input id="bank_name" class="input-shell" type="text" name="bank_name" value="HDFC Bank" placeholder="HDFC Bank">
+                    </div>
+                    <div>
+                        <label class="field-label" for="account_holder">Account holder</label>
+                        <input id="account_holder" class="input-shell" type="text" name="account_holder" placeholder="Demo Customer">
+                    </div>
+                </div>
+                <p class="mt-2 text-xs font-semibold text-ink/55">This development build simulates the bank redirect and approval response.</p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="field-label" for="receipt-email">Receipt email</label>
+                    <input id="receipt-email" class="input-shell bg-mist/70" type="email" value="{{ session.get('email', '') }}" readonly>
+                </div>
+                <div>
+                    <label class="field-label" for="payment_reference">Transaction reference</label>
+                    <input id="payment_reference" class="input-shell" type="text" name="payment_reference" placeholder="Auto generated if empty">
+                </div>
+            </div>
+
+            <div class="rounded-[1.2rem] border border-soil/10 bg-mist/70 p-4">
+                <div class="flex items-start gap-3">
+                    <div class="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-leaf shadow-sm">
+                        <i class="fa-solid fa-flask"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-soil">Invoice-grade dev metadata</p>
+                        <p class="mt-1 text-sm leading-6 text-ink/65">The sandbox gateway will attach provider, method, reference, and safe method details to the order so tracking, invoices, and farmer dashboards all stay synchronized.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary-app w-full justify-center">
+                Authorize dev payment &#8377;{{ "%.2f"|format(order.total_price) }}
+                <i class="fa-solid fa-lock"></i>
+            </button>
+        </form>
+
+        <div class="mt-5 flex flex-wrap gap-3">
+            <a href="{{ url_for('invoice', order_id=order.id) }}" class="btn-outline-app">{{ t('checkout.actions.invoice', 'View invoice') }}</a>
+            <a href="{{ url_for('my_orders') }}" class="inline-flex items-center gap-2 text-sm font-bold text-ink/65 transition hover:text-soil">
+                <i class="fa-solid fa-arrow-left"></i>
+                {{ t('checkout.actions.back', 'Return to my orders') }}
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+  const providerSelect = document.getElementById('payment_provider');
+  const methodInputs = Array.from(document.querySelectorAll('input[name="payment_method"]'));
+  const panels = Array.from(document.querySelectorAll('[data-payment-panel]'));
+  const referenceInput = document.getElementById('payment_reference');
+  if (!providerSelect || !methodInputs.length || !referenceInput) return;
+
+  const providerMap = {
+    'UPI': ['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'Razorpay'],
+    'Card': ['Visa Test', 'Mastercard Test', 'RuPay Test'],
+    'Net Banking': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak'],
+  };
+
+  function currentMethod() {
+    const checked = methodInputs.find((input) => input.checked);
+    return checked ? checked.value : 'UPI';
+  }
+
+  function syncProviderOptions() {
+    const method = currentMethod();
+    const options = providerMap[method] || providerMap['UPI'];
+    const currentValue = providerSelect.value;
+    providerSelect.innerHTML = options.map((item) => `<option value="${item}">${item}</option>`).join('');
+    providerSelect.value = options.includes(currentValue) ? currentValue : options[0];
+  }
+
+  function syncPanels() {
+    const method = currentMethod();
+    panels.forEach((panel) => {
+      panel.classList.toggle('hidden', panel.getAttribute('data-payment-panel') !== method);
+    });
+  }
+
+  function syncReferencePlaceholder() {
+    const method = currentMethod();
+    referenceInput.placeholder = method === 'UPI' ? 'UPI-TEST-0001' : method === 'Card' ? 'CARD-TEST-0001' : 'NB-TEST-0001';
+  }
+
+  function refresh() {
+    syncProviderOptions();
+    syncPanels();
+    syncReferencePlaceholder();
+  }
+
+  methodInputs.forEach((input) => input.addEventListener('change', refresh));
+  refresh();
+})();
+</script>
+{% endblock %}
