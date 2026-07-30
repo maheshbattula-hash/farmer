@@ -3,19 +3,28 @@ import { SchemaTypes, type HydratedDocument, type Types } from 'mongoose';
 
 @Schema({ collection: 'orders', versionKey: false })
 export class Order {
-  @Prop({ type: SchemaTypes.ObjectId, required: true, ref: 'User' })
-  customer!: Types.ObjectId;
+  @Prop({ type: SchemaTypes.ObjectId, required: false, ref: 'User' })
+  customer?: Types.ObjectId;
 
-  @Prop({ type: SchemaTypes.ObjectId, required: true, ref: 'Crop' })
-  crop!: Types.ObjectId;
+  @Prop({ type: String, default: '' })
+  userId!: string;
 
-  @Prop({ type: Number, required: true, min: 0 })
+  @Prop({ type: String, default: '' })
+  restaurantId!: string;
+
+  @Prop({ type: SchemaTypes.Mixed, default: [] })
+  items!: Array<{ productId: string; quantity: number }>;
+
+  @Prop({ type: SchemaTypes.ObjectId, required: false, ref: 'Crop' })
+  crop?: Types.ObjectId;
+
+  @Prop({ type: Number, required: false, default: 0, min: 0 })
   quantity!: number;
 
-  @Prop({ type: Number, required: true, min: 0 })
+  @Prop({ type: Number, required: false, default: 0, min: 0 })
   total_price!: number;
 
-  @Prop({ default: 'Order Placed' })
+  @Prop({ default: 'PENDING' })
   status!: string;
 
   @Prop({ type: Date, default: () => new Date() })
@@ -55,6 +64,37 @@ export class Order {
   delivery_address!: string;
 
   @Prop({ default: '' })
+  deliveryAddress!: string;
+
+  @Prop({ type: SchemaTypes.Mixed, default: null })
+  deliveryLocation!: { latitude: number; longitude: number } | null;
+
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0],
+    },
+  })
+  deliveryLocationGeo!: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
+  @Prop({ type: SchemaTypes.ObjectId, default: null, ref: 'DeliveryBoy' })
+  deliveryBoyId!: Types.ObjectId | null;
+
+  @Prop({ type: Date, default: null })
+  assignedAt!: Date | null;
+
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  rejectedDeliveryBoys!: Types.ObjectId[];
+
+  @Prop({ default: '' })
   fulfillment_window!: string;
 
   @Prop({ default: '' })
@@ -65,3 +105,6 @@ export type OrderDocument = HydratedDocument<Order>;
 export const OrderSchema = SchemaFactory.createForClass(Order);
 OrderSchema.index({ customer: 1, order_date: -1 });
 OrderSchema.index({ crop: 1, order_date: -1 });
+OrderSchema.index({ deliveryLocationGeo: '2dsphere' });
+OrderSchema.index({ status: 1, deliveryBoyId: 1 });
+

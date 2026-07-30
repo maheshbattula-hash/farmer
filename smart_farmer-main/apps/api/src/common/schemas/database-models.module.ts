@@ -11,6 +11,7 @@ import { Crop, CropSchema } from '../../marketplace/schemas/crop.schema';
 import { Order, OrderSchema } from '../../orders/schemas/order.schema';
 import { OrderUpdate, OrderUpdateSchema } from '../../orders/schemas/order-update.schema';
 import { Review, ReviewSchema } from '../../reviews/schemas/review.schema';
+import { DeliveryBoy, DeliveryBoySchema } from '../../delivery/schemas/delivery-boy.schema';
 import { DiseaseReport, DiseaseReportSchema } from '../../smart/schemas/disease-report.schema';
 import { IrrigationPlan, IrrigationPlanSchema } from '../../smart/schemas/irrigation-plan.schema';
 import { Notification, NotificationSchema } from '../../smart/schemas/notification.schema';
@@ -22,6 +23,7 @@ import { Notification, NotificationSchema } from '../../smart/schemas/notificati
       { name: AuthChallenge.name, schema: AuthChallengeSchema },
       { name: OtpRequest.name, schema: OtpRequestSchema },
       { name: AuthToken.name, schema: AuthTokenSchema },
+      { name: DeliveryBoy.name, schema: DeliveryBoySchema },
       { name: Crop.name, schema: CropSchema },
       { name: Order.name, schema: OrderSchema },
       { name: OrderUpdate.name, schema: OrderUpdateSchema },
