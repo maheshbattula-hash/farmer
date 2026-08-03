@@ -1,0 +1,7 @@
+Django==6.0.3
+djangorestframework==3.17.1
+django-cors-headers==4.7.0
+django-mongodb-backend==6.0.2
+psycopg[binary]==3.2.12
+Pillow==11.1.0
+python-dotenv==1.1.1

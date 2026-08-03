@@ -1,0 +1,28 @@
+{
+  "name": "smart-farmer-web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev:lan": "next dev --hostname 0.0.0.0 --port 3000",
+    "build": "next build --webpack",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
+    "start:lan": "next start --hostname 0.0.0.0 --port 3000",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.1.0",
+    "nunjucks": "^3.2.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/nunjucks": "^3.2.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
