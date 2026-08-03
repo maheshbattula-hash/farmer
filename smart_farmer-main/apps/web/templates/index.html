@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="grid gap-6 lg:grid-cols-[1.2fr_0.95fr]">
+    <div class="hero-shell reveal rounded-[1.8rem] px-5 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-9">
+        <span class="section-kicker">
+            <i class="fa-solid fa-wheat-awn"></i>
+            {{ welcome_message }}
+        </span>
+        <h1 class="mt-5 max-w-3xl font-display text-3xl font-bold leading-tight text-soil sm:text-[2.7rem] lg:text-[3.35rem]">
+            {{ t('marketplace.hero.title', 'Build a smarter farm-to-market workflow with verified produce, dynamic pricing, and direct buyer access.') }}
+        </h1>
+        <p class="mt-4 max-w-2xl text-sm leading-6 text-ink/72 sm:text-base">
+            {{ t('marketplace.hero.description', 'Search by crop, district, state, price, and trust level. Place retail or bulk orders, open live chat, and carry rich delivery data from checkout to invoice.') }}
+        </p>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+            <div class="metric-card">
+                <p class="metric-label">{{ t('marketplace.metric.total_results', 'Visible listings') }}</p>
+                <p class="metric-value">{{ stats.total_results or crops|length }}</p>
+                <p class="mt-2 text-sm text-ink/64">{{ t('marketplace.metric.total_results.desc', 'Fresh listings currently available in your filtered view.') }}</p>
+            </div>
+            <div class="metric-card">
+                <p class="metric-label">{{ t('marketplace.metric.verified', 'Verified farmers') }}</p>
+                <p class="metric-value">{{ stats.verified_results or 0 }}</p>
+                <p class="mt-2 text-sm text-ink/64">{{ t('marketplace.metric.verified.desc', 'Trusted growers with stronger identity and profile signals.') }}</p>
+            </div>
+            <div class="metric-card">
+                <p class="metric-label">{{ t('marketplace.metric.organic', 'Organic-ready') }}</p>
+                <p class="metric-value">{{ stats.organic_results or 0 }}</p>
+                <p class="mt-2 text-sm text-ink/64">{{ t('marketplace.metric.organic.desc', 'Listings marked organic or naturally grown.') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <aside class="surface-panel reveal rounded-[1.8rem] px-5 py-5 sm:px-6 sm:py-6">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <span class="section-kicker">
+                    <i class="fa-solid fa-sliders"></i>
+                    {{ t('marketplace.search.kicker', 'Search harvests') }}
+                </span>
+                <h2 class="mt-3 font-display text-[1.9rem] font-bold text-soil">{{ t('marketplace.search.title', 'Filter the marketplace') }}</h2>
+                <p class="mt-2 text-sm leading-6 text-ink/68">{{ t('marketplace.search.description', 'Search by crop, district, state, price range, and verification status.') }}</p>
+            </div>
+            <div class="hidden rounded-2xl bg-grain/15 px-3 py-2 text-sm font-bold text-soil sm:block">{{ t('marketplace.search.smart', 'AI-assisted') }}</div>
+        </div>
+
+        <form action="{{ url_for('marketplace') }}" method="GET" class="mt-6 grid gap-4">
+            <div>
+                <label class="field-label" for="query">{{ t('marketplace.search.products', 'Search products') }}</label>
+                <input id="query" class="input-shell" type="text" name="query" placeholder="Tomatoes, rice, honey, organic vegetables" value="{{ query or '' }}">
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="field-label" for="category">{{ t('marketplace.search.category', 'Category') }}</label>
+                    <select id="category" class="select-shell" name="category">
+                        <option value="">{{ t('marketplace.search.all_categories', 'All categories') }}</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="sort">{{ t('marketplace.search.sort', 'Sort by') }}</label>
+                    <select id="sort" class="select-shell" name="sort">
+                        {% for option in sort_options %}
+                        <option value="{{ option.value }}" {% if sort == option.value %}selected{% endif %}>{{ option.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="field-label" for="state-select">{{ t('marketplace.search.state', 'State') }}</label>
+                    <select id="state-select" class="select-shell" name="state">
+                        <option value="">{{ t('marketplace.search.all_states', 'All states') }}</option>
+                        {% for s in states %}
+                        <option value="{{ s }}" {% if state == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="district-select">{{ t('marketplace.search.district', 'District') }}</label>
+                    <select id="district-select" class="select-shell" name="district">
+                        <option value="">{{ t('marketplace.search.all_districts', 'All districts') }}</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="field-label" for="price_min">{{ t('marketplace.search.min_price', 'Minimum price') }}</label>
+                    <input id="price_min" class="input-shell" type="number" step="0.1" name="price_min" value="{{ price_min or '' }}" placeholder="20">
+                </div>
+                <div>
+                    <label class="field-label" for="price_max">{{ t('marketplace.search.max_price', 'Maximum price') }}</label>
+                    <input id="price_max" class="input-shell" type="number" step="0.1" name="price_max" value="{{ price_max or '' }}" placeholder="100">
+                </div>
+            </div>
+            <label class="flex items-center gap-3 rounded-[1.1rem] border border-soil/10 bg-mist/60 px-4 py-3 text-sm font-semibold text-soil">
+                <input type="checkbox" name="verified_only" {% if verified_only %}checked{% endif %} class="h-4 w-4 rounded border-soil/20 text-leaf focus:ring-leaf">
+                {{ t('marketplace.search.verified_only', 'Only show verified farmers') }}
+            </label>
+            <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <button type="submit" class="btn-primary-app">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    {{ t('marketplace.search.submit', 'Explore listings') }}
+                </button>
+                {% if query or state or district or category or price_min or price_max or verified_only or sort != 'newest' %}
+                <a href="{{ url_for('marketplace') }}" class="btn-outline-app justify-center">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    {{ t('marketplace.search.reset', 'Reset') }}
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </aside>
+</section>
+
+<section class="mt-8 reveal">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <span class="section-kicker">
+                <i class="fa-solid fa-basket-shopping"></i>
+                {{ t('marketplace.results.kicker', 'Marketplace') }}
+            </span>
+            <h2 class="mt-3 font-display text-[1.95rem] font-bold text-soil sm:text-[2.25rem]">{{ t('marketplace.results.title', 'Smart listings ready to order') }}</h2>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-ink/68 sm:text-base">{{ t('marketplace.results.description', 'Every card includes stock health, delivery speed, direct chat, and stronger order controls for web and mobile buyers.') }}</p>
+        </div>
+        <div class="rounded-full border border-soil/10 bg-white/70 px-4 py-2 text-sm font-semibold text-ink/70">
+            {{ t('marketplace.results.count', '{count} result{suffix}', count=crops|length, suffix='' if crops|length == 1 else 's') }}
+        </div>
+    </div>
+
+    <div class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {% for crop in crops %}
+        <article class="surface-card reveal overflow-hidden p-4">
+            <div class="relative">
+                {% if crop.image_url %}
+                <img src="{{ url_for('static', filename=crop.image_url) }}" alt="{{ crop.name }}" class="crop-thumb">
+                {% else %}
+                <div class="flex aspect-[4/3] w-full items-center justify-center rounded-[1.4rem] bg-mist text-4xl text-leaf/45">
+                    <i class="fa-solid fa-seedling"></i>
+                </div>
+                {% endif %}
+                <div class="absolute left-4 top-4 flex flex-wrap gap-2">
+                    <span class="badge-app badge-neutral">{{ crop.category or t('marketplace.card.general', 'General') }}</span>
+                    {% if crop.is_verified %}
+                    <span class="badge-app badge-success"><i class="fa-solid fa-badge-check"></i> {{ t('marketplace.badge.verified', 'Verified') }}</span>
+                    {% endif %}
+                    {% if crop.organic %}
+                    <span class="badge-app badge-success"><i class="fa-solid fa-leaf"></i> {{ t('marketplace.badge.organic', 'Organic') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="font-display text-[1.45rem] font-bold text-soil">{{ crop.name }}</h3>
+                    <p class="mt-1 text-sm font-semibold text-ink/62">
+                        <i class="fa-solid fa-location-dot text-leaf"></i>
+                        {{ crop.village or crop.farmer_city or t('marketplace.card.local_source', 'Local source') }}, {{ crop.district or crop.state }}
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-ink/45">{{ t('marketplace.card.price', 'Price') }}</p>
+                    <p class="font-display text-[2rem] font-bold text-soil">&#8377;{{ crop.price }}</p>
+                    <p class="text-xs text-ink/50">/ {{ crop.unit or 'kg' }}</p>
+                </div>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl bg-mist/70 p-3">
+                    <p class="metric-label">{{ t('marketplace.card.stock', 'Stock') }}</p>
+                    <p class="mt-2 text-lg font-extrabold text-soil">{{ crop.stock_status or 'Available' }}</p>
+                    <p class="mt-1 text-sm text-ink/60">{{ crop.quantity }} {{ crop.unit or 'kg' }} {{ t('marketplace.card.available', 'available') }}</p>
+                </div>
+                <div class="rounded-2xl bg-mist/70 p-3">
+                    <p class="metric-label">{{ t('marketplace.card.delivery', 'Delivery') }}</p>
+                    <p class="mt-2 text-lg font-extrabold text-soil">{{ crop.delivery_eta or '2-4 days' }}</p>
+                    <p class="mt-1 text-sm text-ink/60">{{ crop.same_day_available and t('marketplace.card.same_day', 'Same-day slots possible') or t('marketplace.card.standard_delivery', 'Scheduled delivery') }}</p>
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-2">
+                <span class="badge-app badge-info"><i class="fa-solid fa-arrow-trend-up"></i> {{ crop.price_trend or 'Stable' }}</span>
+                <span class="badge-app badge-warning"><i class="fa-solid fa-signal"></i> {{ t('marketplace.card.demand_score', 'Demand') }} {{ crop.demand_score or 0 }}</span>
+                <span class="badge-app badge-neutral"><i class="fa-solid fa-boxes-stacked"></i> {{ t('marketplace.card.min_order', 'Min') }} {{ crop.min_order_quantity or 1 }} {{ crop.unit or 'kg' }}</span>
+            </div>
+
+            {% if crop.tags and crop.tags|length %}
+            <div class="mt-4 flex flex-wrap gap-2">
+                {% for tag in crop.tags %}
+                <span class="rounded-full border border-soil/10 bg-white/80 px-3 py-1 text-xs font-semibold text-ink/65">#{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="mt-5 rounded-[1.3rem] bg-mist/70 p-4">
+                <a href="{{ url_for('farmer_profile', id=crop.farmer_id) }}" class="flex items-center gap-3 text-sm text-ink/75 transition hover:text-soil">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-leaf to-soil font-bold text-white">
+                        {{ crop.farmer_name[0] }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-soil">{{ crop.farmer_name }}</p>
+                        <p>{{ t('marketplace.card.profile', 'Farmer profile and trust details') }}</p>
+                    </div>
+                </a>
+            </div>
+
+            <form action="{{ url_for('place_order') }}" method="POST" class="mt-5 space-y-4">
+                <input type="hidden" name="crop_id" value="{{ crop.id }}">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="quantity-{{ crop.id }}">{{ t('marketplace.card.quantity', 'Qty') }}</label>
+                        <input id="quantity-{{ crop.id }}" class="input-shell" type="number" name="quantity" min="{{ crop.min_order_quantity or 0.1 }}" step="0.1" value="{{ crop.min_order_quantity or 1 }}">
+                    </div>
+                    <div>
+                        <label class="field-label" for="payment_method-{{ crop.id }}">{{ t('marketplace.card.payment_method', 'Payment method') }}</label>
+                        <select id="payment_method-{{ crop.id }}" class="select-shell" name="payment_method">
+                            <option value="UPI">UPI</option>
+                            <option value="Card">Card</option>
+                            <option value="Net Banking">Net Banking</option>
+                        </select>
+                        <p class="mt-2 text-xs font-semibold text-ink/55">Sandbox checkout supports UPI, card, and net banking.</p>
+                    </div>
+                </div>
+                <div>
+                    <label class="field-label" for="delivery_address-{{ crop.id }}">{{ t('marketplace.card.delivery_address', 'Delivery address') }}</label>
+                    <input id="delivery_address-{{ crop.id }}" class="input-shell" type="text" name="delivery_address" placeholder="Door number, village, district">
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="window-{{ crop.id }}">{{ t('marketplace.card.fulfillment_window', 'Fulfillment window') }}</label>
+                        <input id="window-{{ crop.id }}" class="input-shell" type="text" name="fulfillment_window" placeholder="Tomorrow 7am-11am">
+                    </div>
+                    <label class="flex items-center gap-3 rounded-[1.1rem] border border-soil/10 bg-white/80 px-4 py-3 text-sm font-semibold text-soil">
+                        <input type="checkbox" name="is_bulk_order" class="h-4 w-4 rounded border-soil/20 text-leaf focus:ring-leaf">
+                        {{ t('marketplace.card.bulk', 'Bulk order') }}
+                    </label>
+                </div>
+                <div>
+                    <label class="field-label" for="note-{{ crop.id }}">{{ t('marketplace.card.note', 'Buyer note') }}</label>
+                    <textarea id="note-{{ crop.id }}" class="textarea-shell" name="buyer_note" placeholder="Mention preferred packing, delivery instructions, or grade requirement"></textarea>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <button type="submit" class="btn-primary-app w-full justify-center">
+                        {{ t('marketplace.card.buy', 'Buy now') }}
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <a href="{{ url_for('chat_start', crop_id=crop.id) }}" class="btn-outline-app w-full justify-center">
+                        {{ t('marketplace.card.chat', 'Message farmer') }}
+                        <i class="fa-solid fa-comments"></i>
+                    </a>
+                </div>
+            </form>
+        </article>
+        {% else %}
+        <div class="empty-state md:col-span-2 xl:col-span-3">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mist text-2xl text-leaf/55">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <h3 class="mt-5 font-display text-[2rem] font-bold text-soil">{{ t('marketplace.empty.title', 'No crops matched your search') }}</h3>
+            <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink/65 sm:text-base">{{ t('marketplace.empty.description', 'Try adjusting the region, verification, or price filters to explore more nearby harvests.') }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const locationData = {
+        "Telangana": ["Hyderabad", "Warangal", "Karimnagar", "Nizamabad", "Khammam", "Adilabad", "Nalgonda"],
+        "Andhra Pradesh": ["Krishna", "Guntur", "East Godavari", "West Godavari", "Nellore", "Chittoor", "Visakhapatnam"],
+        "Karnataka": ["Bengaluru", "Mysuru", "Hubballi", "Dharwad", "Mangaluru", "Belagavi"],
+        "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli"],
+        "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Thane", "Nashik", "Aurangabad"],
+        "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Malappuram"],
+        "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Berhampur", "Sambalpur"]
+    };
+
+    const stateSelect = document.getElementById('state-select');
+    const districtSelect = document.getElementById('district-select');
+    const currentDistrict = "{{ district or '' }}";
+
+    function updateDistricts() {
+        const selectedState = stateSelect.value;
+        districtSelect.innerHTML = {{ ('<option value="">' ~ t('marketplace.search.all_districts', 'All districts') ~ '</option>')|tojson }};
+
+        if (selectedState && locationData[selectedState]) {
+            locationData[selectedState].forEach((district) => {
+                const option = document.createElement('option');
+                option.value = district;
+                option.textContent = district;
+                if (district === currentDistrict) {
+                    option.selected = true;
+                }
+                districtSelect.appendChild(option);
+            });
+        }
+    }
+
+    stateSelect.addEventListener('change', updateDistricts);
+    if (stateSelect.value) {
+        updateDistricts();
+    }
+</script>
+{% endblock %}

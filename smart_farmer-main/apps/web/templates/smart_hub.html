@@ -1,0 +1,574 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .smart-dashboard {
+        display: grid;
+        gap: 1.2rem;
+    }
+
+    .smart-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.78);
+        background:
+            radial-gradient(circle at top left, rgba(215, 164, 74, 0.2), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(61, 134, 181, 0.18), transparent 24%),
+            linear-gradient(135deg, rgba(20, 42, 32, 0.98), rgba(41, 84, 56, 0.94) 54%, rgba(88, 130, 88, 0.86));
+        box-shadow: 0 30px 70px rgba(16, 33, 22, 0.16);
+    }
+
+    .smart-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 42%);
+        pointer-events: none;
+    }
+
+    .smart-hero-inner {
+        position: relative;
+        display: grid;
+        gap: 1rem;
+        padding: 1.2rem;
+    }
+
+    .smart-hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.48rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }
+
+    .smart-hero-title {
+        margin-top: 0.9rem;
+        max-width: 12ch;
+        font-size: clamp(2.2rem, 5vw, 3.95rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        color: #fff;
+    }
+
+    .smart-hero-copy {
+        color: rgba(246, 251, 245, 0.82);
+    }
+
+    .smart-chip-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.7rem;
+        margin-top: 1.15rem;
+    }
+
+    .smart-chip-cloud .badge-app {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .smart-pulse-card {
+        display: grid;
+        gap: 0.8rem;
+        padding: 1rem;
+        border-radius: 1.35rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(16px);
+        color: rgba(246, 251, 245, 0.9);
+    }
+
+    .smart-pulse-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.73rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(246, 251, 245, 0.72);
+    }
+
+    .smart-pulse-value {
+        font-family: "Noto Rashi Hebrew", serif;
+        font-size: 2.15rem;
+        line-height: 1;
+        color: #fff;
+    }
+
+    .smart-pulse-stack {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .smart-pulse-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.8rem 0.9rem;
+        border-radius: 1rem;
+        background: rgba(10, 20, 14, 0.18);
+    }
+
+    .smart-kpi-grid {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .smart-kpi {
+        border-radius: 1.25rem;
+        border: 1px solid rgba(31, 58, 45, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(242, 246, 240, 0.92));
+        padding: 1rem;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .smart-card-shell {
+        border-radius: 1.55rem;
+    }
+
+    .smart-forecast-card,
+    .smart-feed-card,
+    .smart-action-card {
+        border-radius: 1.3rem;
+    }
+
+    .smart-section-heading {
+        max-width: 26rem;
+    }
+
+    @media (min-width: 720px) {
+        .smart-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1100px) {
+        .smart-hero-inner {
+            grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 0.75fr);
+            align-items: end;
+        }
+
+        .smart-kpi-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="smart-dashboard">
+<section class="smart-hero reveal is-visible">
+    <div class="smart-hero-inner">
+        <div>
+            <span class="smart-hero-kicker">
+                <i class="fa-solid fa-microchip"></i>
+                {{ t('smart.kicker', 'Intelligence layer') }}
+            </span>
+            <h1 class="smart-hero-title font-display font-bold">{{ t('smart.title', 'Smart Farming Hub') }}</h1>
+            <p class="smart-hero-copy text-sm leading-7 sm:text-base">{{ t('smart.description', 'Monitor market trends, irrigation recommendations, disease alerts, and farm operations from one AI-assisted control room.') }}</p>
+            <div class="smart-chip-cloud">
+                <span class="badge-app"><i class="fa-solid fa-chart-line"></i> {{ t('smart.badge.forecast', 'Price forecast') }}</span>
+                <span class="badge-app"><i class="fa-solid fa-droplet"></i> {{ t('smart.badge.irrigation', 'Water planning') }}</span>
+                <span class="badge-app"><i class="fa-solid fa-bug"></i> {{ t('smart.badge.disease', 'Disease watch') }}</span>
+            </div>
+        </div>
+
+        <aside class="smart-pulse-card">
+            <div class="smart-pulse-head">
+                <span>Hub pulse</span>
+                <span>{{ role|title }}</span>
+            </div>
+            <div>
+                <p class="smart-pulse-value">&#8377;{{ "%.0f"|format(analytics.sales_summary.total_revenue or 0) }}</p>
+                <p class="mt-3 text-sm leading-6 text-white/75">The dashboard now opens with a clearer operational summary before dropping into tools and activity feeds.</p>
+            </div>
+            <div class="smart-pulse-stack">
+                <div class="smart-pulse-item"><span>Total orders</span><strong>{{ analytics.sales_summary.total_orders or 0 }}</strong></div>
+                <div class="smart-pulse-item"><span>Average order</span><strong>&#8377;{{ "%.0f"|format(analytics.sales_summary.average_order_value or 0) }}</strong></div>
+                <div class="smart-pulse-item"><span>Water saved</span><strong>{{ analytics.water_usage_reports.avg_saving_percent or 0 }}%</strong></div>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<section class="surface-panel smart-card-shell reveal px-5 py-6 sm:px-7 sm:py-8">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="smart-section-heading">
+            <span class="section-kicker"><i class="fa-solid fa-wave-square"></i> Operations overview</span>
+            <h2 class="mt-3 font-display text-[1.95rem] font-bold text-soil">Today at a glance</h2>
+            <p class="mt-2 text-sm leading-6 text-ink/68">Core numbers are grouped into a real KPI shelf so the page reads like a dashboard instead of a long utility stack.</p>
+        </div>
+        <a href="{{ url_for('marketplace') }}" class="btn-outline-app">Open marketplace</a>
+    </div>
+
+    <div class="smart-kpi-grid mt-7">
+        <div class="smart-kpi">
+            <p class="metric-label">{{ t('smart.metric.orders', 'Total orders') }}</p>
+            <p class="metric-value">{{ analytics.sales_summary.total_orders or 0 }}</p>
+            <p class="mt-2 text-sm text-ink/62">Order flow across the platform.</p>
+        </div>
+        <div class="smart-kpi">
+            <p class="metric-label">{{ t('smart.metric.revenue', 'Revenue') }}</p>
+            <p class="metric-value">&#8377;{{ "%.0f"|format(analytics.sales_summary.total_revenue or 0) }}</p>
+            <p class="mt-2 text-sm text-ink/62">Current commercial pulse.</p>
+        </div>
+        <div class="smart-kpi">
+            <p class="metric-label">{{ t('smart.metric.avg_order', 'Average order value') }}</p>
+            <p class="metric-value">&#8377;{{ "%.0f"|format(analytics.sales_summary.average_order_value or 0) }}</p>
+            <p class="mt-2 text-sm text-ink/62">Useful demand quality signal.</p>
+        </div>
+        <div class="smart-kpi">
+            <p class="metric-label">{{ t('smart.metric.water', 'Water saving') }}</p>
+            <p class="metric-value">{{ analytics.water_usage_reports.avg_saving_percent or 0 }}%</p>
+            <p class="mt-2 text-sm text-ink/62">{{ analytics.water_usage_reports.estimated_savings_litres or 0 }} {{ t('smart.metric.water.desc', 'litres estimated') }}</p>
+        </div>
+    </div>
+</section>
+
+<section class="mt-8 grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
+    <div class="space-y-8">
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div class="smart-section-heading">
+                    <span class="section-kicker"><i class="fa-solid fa-chart-column"></i> {{ t('smart.forecast.kicker', 'Market forecast') }}</span>
+                    <h2 class="mt-3 font-display text-[1.9rem] font-bold text-soil">{{ t('smart.forecast.title', 'Price and demand outlook') }}</h2>
+                    <p class="mt-2 text-sm leading-6 text-ink/66">Compare price direction and demand without hunting through the page.</p>
+                </div>
+                <a href="{{ url_for('marketplace') }}" class="btn-outline-app">{{ t('smart.forecast.marketplace', 'Open marketplace') }}</a>
+            </div>
+            <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                {% for item in market_forecast %}
+                <article class="smart-forecast-card rounded-[1.45rem] border border-soil/10 bg-mist/60 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="font-bold text-soil">{{ item.crop_name }}</h3>
+                            <p class="mt-1 text-sm text-ink/60">{{ t('smart.forecast.demand_index', 'Demand index') }} {{ item.demand_index }}</p>
+                        </div>
+                        <span class="badge-app {% if item.trend == 'Rising' %}badge-success{% elif item.trend == 'Soft' %}badge-warning{% else %}badge-info{% endif %}">{{ item.trend }}</span>
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-2xl bg-white/75 p-3">
+                            <p class="metric-label">{{ t('smart.forecast.current', 'Current') }}</p>
+                            <p class="mt-2 font-display text-2xl font-bold text-soil">&#8377;{{ "%.2f"|format(item.current_price or 0) }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-white/75 p-3">
+                            <p class="metric-label">{{ t('smart.forecast.seven_day', '7-day') }}</p>
+                            <p class="mt-2 font-display text-2xl font-bold text-soil">&#8377;{{ "%.2f"|format(item.projected_price_7d or 0) }}</p>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm leading-6 text-ink/68">{{ item.recommendation }}</p>
+                </article>
+                {% else %}
+                <div class="empty-state lg:col-span-2">
+                    <h3 class="font-display text-[1.6rem] font-bold text-soil">{{ t('smart.forecast.empty', 'No forecast data yet') }}</h3>
+                    <p class="mt-2 text-sm text-ink/65">{{ t('smart.forecast.empty_desc', 'Add crops or place a few orders to start generating forecast intelligence.') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="grid gap-8 lg:grid-cols-2">
+            <div class="surface-card smart-card-shell smart-action-card reveal p-5 sm:p-6">
+                <span class="section-kicker"><i class="fa-solid fa-syringe"></i> {{ t('smart.disease.kicker', 'Disease scanner') }}</span>
+                <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.disease.title', 'Predict crop disease') }}</h2>
+                <p class="text-sm leading-6 text-ink/66">Symptoms, crop image, and field context now sit in one cleaner analysis card.</p>
+                <form action="{{ url_for('smart_disease') }}" method="POST" enctype="multipart/form-data" class="mt-5 space-y-4">
+                    <div>
+                        <label class="field-label" for="disease-crop">{{ t('smart.form.crop_name', 'Crop name') }}</label>
+                        <input id="disease-crop" class="input-shell" type="text" name="crop_name" placeholder="Tomato">
+                    </div>
+                    <div>
+                        <label class="field-label" for="disease-symptoms">{{ t('smart.form.symptoms', 'Symptoms') }}</label>
+                        <textarea id="disease-symptoms" class="textarea-shell" name="symptoms" placeholder="Yellow leaves, spots, wilting..."></textarea>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="field-label" for="humidity">Humidity %</label>
+                            <input id="humidity" class="input-shell" type="number" step="0.1" name="humidity" placeholder="72">
+                        </div>
+                        <div>
+                            <label class="field-label" for="soil_moisture">Soil moisture</label>
+                            <input id="soil_moisture" class="input-shell" type="number" step="0.1" name="soil_moisture" placeholder="36">
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="field-label" for="temperature_c">Temperature C</label>
+                            <input id="temperature_c" class="input-shell" type="number" step="0.1" name="temperature_c" placeholder="29">
+                        </div>
+                        <div>
+                            <label class="field-label" for="disease-image">Upload crop image</label>
+                            <input id="disease-image" class="file-input file-shell" type="file" name="image" accept="image/*" capture="environment">
+                            <p class="mt-2 text-xs font-semibold text-ink/55">Upload JPG or PNG up to 2MB for better disease scoring.</p>
+                        </div>
+                    </div>
+                    <div class="rounded-[1.1rem] border border-soil/10 bg-mist/60 p-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-[0.18em] text-ink/45">Image preview</p>
+                                <p class="mt-1 text-sm text-ink/65">Preview the leaf image before sending it to the sandbox scanner.</p>
+                            </div>
+                            <span class="badge-app badge-info">Upload ready</span>
+                        </div>
+                        <div id="disease-image-preview-shell" class="mt-3 hidden rounded-[1.1rem] border border-soil/10 bg-white/80 p-3">
+                            <img id="disease-image-preview" alt="Disease preview" class="mx-auto max-h-48 rounded-[1rem] object-cover">
+                            <p id="disease-image-name" class="mt-2 text-center text-xs font-semibold text-ink/55"></p>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="field-label" for="image_name">Image label (optional)</label>
+                            <input id="image_name" class="input-shell" type="text" name="image_name" placeholder="leaf-scan.jpg or plot-7">
+                        </div>
+                        <div>
+                            <label class="field-label" for="district">District</label>
+                            <input id="district" class="input-shell" type="text" name="district" placeholder="Guntur">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="field-label" for="state">State</label>
+                        <input id="state" class="input-shell" type="text" name="state" placeholder="Andhra Pradesh">
+                    </div>
+                    <button type="submit" class="btn-primary-app w-full justify-center">
+                        {{ t('smart.form.predict', 'Run disease prediction') }}
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div class="surface-card smart-card-shell smart-action-card reveal p-5 sm:p-6">
+                <span class="section-kicker"><i class="fa-solid fa-droplet"></i> {{ t('smart.irrigation.kicker', 'Irrigation planning') }}</span>
+                <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.irrigation.title', 'Generate watering plan') }}</h2>
+                <p class="text-sm leading-6 text-ink/66">A tighter recommendation block for climate and soil inputs.</p>
+                <form action="{{ url_for('smart_irrigation') }}" method="POST" class="mt-5 space-y-4">
+                    <div>
+                        <label class="field-label" for="irrigation-crop">{{ t('smart.form.crop_name', 'Crop name') }}</label>
+                        <input id="irrigation-crop" class="input-shell" type="text" name="crop_name" placeholder="Rice">
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <label class="field-label" for="irrigation-soil">Soil moisture</label>
+                            <input id="irrigation-soil" class="input-shell" type="number" step="0.1" name="soil_moisture" placeholder="28">
+                        </div>
+                        <div>
+                            <label class="field-label" for="rainfall_mm">Rainfall mm</label>
+                            <input id="rainfall_mm" class="input-shell" type="number" step="0.1" name="rainfall_mm" placeholder="4">
+                        </div>
+                        <div>
+                            <label class="field-label" for="irrigation-temp">Temperature C</label>
+                            <input id="irrigation-temp" class="input-shell" type="number" step="0.1" name="temperature_c" placeholder="31">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary-app w-full justify-center">
+                        {{ t('smart.form.irrigation', 'Create irrigation recommendation') }}
+                        <i class="fa-solid fa-water"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <span class="section-kicker"><i class="fa-solid fa-bell"></i> {{ t('smart.notifications.kicker', 'Operational feed') }}</span>
+            <h2 class="mt-3 font-display text-[1.9rem] font-bold text-soil">{{ t('smart.notifications.title', 'Alerts, advisories, and recommendations') }}</h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-ink/66">A cleaner feed for operational signals and best-practice nudges.</p>
+            <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                <div>
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-ink/45">{{ t('smart.notifications.latest', 'Latest notifications') }}</p>
+                    <div class="mt-3 space-y-3">
+                        {% for note in notifications %}
+                        <div class="smart-feed-card rounded-[1.25rem] border border-soil/10 bg-white/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-bold text-soil">{{ note.title }}</p>
+                                    <p class="mt-1 text-sm text-ink/65">{{ note.body }}</p>
+                                </div>
+                                {% if not note.read %}
+                                <span class="badge-app badge-warning">{{ t('smart.notifications.new', 'New') }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-ink/40">{{ note.created_at_display }}</p>
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-ink/60">{{ t('smart.notifications.empty', 'No notifications available right now.') }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm font-bold uppercase tracking-[0.18em] text-ink/45">{{ t('smart.advisories.latest', 'Best-practice advisories') }}</p>
+                    <div class="mt-3 space-y-3">
+                        {% for tip in advisories %}
+                        <div class="smart-feed-card rounded-[1.25rem] border border-soil/10 bg-mist/70 p-4">
+                            <p class="font-bold text-soil">{{ tip.title }}</p>
+                            <p class="mt-2 text-sm leading-6 text-ink/65">{{ tip.body }}</p>
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-ink/60">{{ t('smart.advisories.empty', 'Advisories will appear here as your crop data grows.') }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-8">
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <span class="section-kicker"><i class="fa-solid fa-sliders"></i> {{ t('smart.profile.kicker', 'Preferences') }}</span>
+            <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.profile.title', 'Location and language settings') }}</h2>
+            <p class="mt-2 text-sm leading-6 text-ink/66">Keep language, location, and field context aligned with the Smart Hub.</p>
+            <form action="{{ url_for('smart_location') }}" method="POST" class="mt-5 space-y-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="city">City</label>
+                        <input id="city" class="input-shell" type="text" name="city" placeholder="Hyderabad">
+                    </div>
+                    <div>
+                        <label class="field-label" for="profile-district">District</label>
+                        <input id="profile-district" class="input-shell" type="text" name="district" placeholder="Medchal">
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="profile-state">State</label>
+                        <input id="profile-state" class="input-shell" type="text" name="state" placeholder="Telangana">
+                    </div>
+                    <div>
+                        <label class="field-label" for="pincode">Pincode</label>
+                        <input id="pincode" class="input-shell" type="text" name="pincode" placeholder="500001">
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="latitude">Latitude</label>
+                        <input id="latitude" class="input-shell" type="number" step="0.0001" name="latitude" placeholder="17.3850">
+                    </div>
+                    <div>
+                        <label class="field-label" for="longitude">Longitude</label>
+                        <input id="longitude" class="input-shell" type="number" step="0.0001" name="longitude" placeholder="78.4867">
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label" for="preferred_language">Preferred language</label>
+                        <select id="preferred_language" class="select-shell" name="preferred_language">
+                            {% for option in language_options %}
+                            <option value="{{ option.code }}" {% if option.code == current_language %}selected{% endif %}>{{ option.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <label class="flex items-center gap-3 rounded-[1.2rem] border border-soil/10 bg-mist/60 px-4 py-3 text-sm font-semibold text-soil">
+                        <input type="checkbox" name="voice_enabled" class="h-4 w-4 rounded border-soil/20 text-leaf focus:ring-leaf">
+                        {{ t('smart.profile.voice', 'Enable voice assistance') }}
+                    </label>
+                </div>
+                <button type="submit" class="btn-outline-app w-full justify-center">
+                    {{ t('smart.profile.save', 'Save preferences') }}
+                    <i class="fa-solid fa-floppy-disk"></i>
+                </button>
+            </form>
+        </div>
+
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <span class="section-kicker"><i class="fa-solid fa-virus"></i> {{ t('smart.reports.kicker', 'Disease watch') }}</span>
+            <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.reports.title', 'Recent crop health reports') }}</h2>
+            <div class="mt-5 space-y-3">
+                {% for report in disease_reports %}
+                <article class="smart-feed-card rounded-[1.3rem] border border-soil/10 bg-white/80 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-bold text-soil">{{ report.crop_name }} - {{ report.predicted_disease }}</p>
+                            <p class="mt-1 text-sm text-ink/62">{{ report.created_at_display }}</p>
+                        </div>
+                        <span class="badge-app {% if report.risk_level == 'High' %}badge-danger{% elif report.risk_level == 'Medium' %}badge-warning{% else %}badge-success{% endif %}">{{ report.risk_level }}</span>
+                    </div>
+                    {% if report.image_url %}
+                    <div class="mt-3 overflow-hidden rounded-[1.1rem] border border-soil/10 bg-mist/45 p-2">
+                        <img src="{{ url_for('static', filename=report.image_url) }}" alt="{{ report.image_name or report.crop_name }}" class="max-h-44 w-full rounded-[0.9rem] object-cover">
+                        <p class="mt-2 text-xs font-semibold text-ink/55">{{ report.image_name or 'Uploaded field image' }}</p>
+                    </div>
+                    {% endif %}
+                    <p class="mt-3 text-sm leading-6 text-ink/66">{{ report.recommendation }}</p>
+                </article>
+                {% else %}
+                <p class="text-sm text-ink/60">{{ t('smart.reports.empty', 'No disease reports yet.') }}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <span class="section-kicker"><i class="fa-solid fa-faucet-drip"></i> {{ t('smart.irrigation.recent', 'Recent irrigation plans') }}</span>
+            <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.irrigation.recent_title', 'Watering recommendations') }}</h2>
+            <div class="mt-5 space-y-3">
+                {% for plan in irrigation_plans %}
+                <article class="smart-feed-card rounded-[1.3rem] border border-soil/10 bg-white/80 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-bold text-soil">{{ plan.crop_name }}</p>
+                            <p class="mt-1 text-sm text-ink/62">{{ plan.next_watering_window }}</p>
+                        </div>
+                        <span class="badge-app badge-info">{{ plan.water_saving_percent }}% {{ t('smart.irrigation.saving', 'saving') }}</span>
+                    </div>
+                    <p class="mt-3 text-sm leading-6 text-ink/66">{{ plan.recommendation }}</p>
+                </article>
+                {% else %}
+                <p class="text-sm text-ink/60">{{ t('smart.irrigation.empty', 'No irrigation plans yet.') }}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if nearby_buyers and nearby_buyers|length %}
+        <div class="surface-card smart-card-shell reveal p-5 sm:p-6">
+            <span class="section-kicker"><i class="fa-solid fa-location-crosshairs"></i> {{ t('smart.nearby.kicker', 'Nearby demand') }}</span>
+            <h2 class="mt-3 font-display text-[1.7rem] font-bold text-soil">{{ t('smart.nearby.title', 'Nearby buyers') }}</h2>
+            <div class="mt-5 space-y-3">
+                {% for buyer in nearby_buyers %}
+                <article class="smart-feed-card rounded-[1.3rem] border border-soil/10 bg-mist/65 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-bold text-soil">{{ buyer.full_name }}</p>
+                            <p class="mt-1 text-sm text-ink/62">{{ buyer.city or buyer.district }}, {{ buyer.state }}</p>
+                        </div>
+                        <span class="badge-app badge-neutral">{{ buyer.distance_km or '--' }} km</span>
+                    </div>
+                    <p class="mt-3 text-sm text-ink/66">{{ buyer.orders }} {{ t('smart.nearby.orders', 'recent orders') }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+  const input = document.getElementById('disease-image');
+  const shell = document.getElementById('disease-image-preview-shell');
+  const preview = document.getElementById('disease-image-preview');
+  const label = document.getElementById('disease-image-name');
+  if (!input || !shell || !preview || !label) return;
+  input.addEventListener('change', function () {
+    const file = input.files && input.files[0];
+    if (!file) {
+      shell.classList.add('hidden');
+      preview.removeAttribute('src');
+      label.textContent = '';
+      return;
+    }
+    label.textContent = file.name;
+    shell.classList.remove('hidden');
+    preview.src = URL.createObjectURL(file);
+  });
+})();
+</script>
+{% endblock %}

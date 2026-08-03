@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="surface-panel reveal rounded-[1.8rem] px-5 py-6 sm:px-7 sm:py-8">
+    <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <span class="section-kicker">
+                <i class="fa-solid fa-cart-flatbed-suitcase"></i>
+                {{ t('customer.kicker', 'Order operations') }}
+            </span>
+            <h1 class="mt-4 font-display text-3xl font-bold text-soil sm:text-[2.7rem]">{{ t('customer.title', 'Track orders, payments, invoices, and reviews') }}</h1>
+            <p class="mt-3 max-w-3xl text-sm leading-6 text-ink/70">{{ t('customer.description', 'See live delivery progress, confirm payments, open invoices, message farmers, and review delivered produce from one order center.') }}</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+            <div class="metric-card min-w-[8rem]">
+                <p class="metric-label">{{ t('customer.summary.active', 'Active') }}</p>
+                <p class="metric-value">{{ summary.active_count or active_orders|length }}</p>
+            </div>
+            <div class="metric-card min-w-[8rem]">
+                <p class="metric-label">{{ t('customer.summary.completed', 'Delivered') }}</p>
+                <p class="metric-value">{{ summary.completed_count or 0 }}</p>
+            </div>
+            <div class="metric-card min-w-[8rem]">
+                <p class="metric-label">{{ t('customer.summary.cancelled', 'Cancelled') }}</p>
+                <p class="metric-value">{{ summary.cancelled_count or 0 }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-8 reveal">
+    <div>
+        <span class="section-kicker"><i class="fa-solid fa-truck-fast"></i> {{ t('customer.active_orders', 'Active orders') }}</span>
+        <h2 class="mt-3 font-display text-[1.9rem] font-bold text-soil">{{ t('customer.active_orders_title', 'Orders in progress') }}</h2>
+    </div>
+
+    <div class="mt-6 grid gap-5 xl:grid-cols-2">
+        {% for order in active_orders %}
+        <article class="surface-card reveal p-5">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-ink/45">{{ order.order_date_display }}</p>
+                    <h3 class="mt-2 font-display text-[1.75rem] font-bold text-soil">{{ order.crop_name }}</h3>
+                    <p class="mt-2 text-sm text-ink/62">{{ t('customer.farmer', 'Farmer') }}: {{ order.farmer_name }}</p>
+                    <p class="mt-1 text-sm text-ink/62">{{ t('customer.invoice_no', 'Invoice') }}: {{ order.invoice_number or '--' }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="badge-app {% if order.payment_status == 'confirmed' %}badge-success{% else %}badge-warning{% endif %}">{{ order.payment_status }}</span>
+                    <span class="badge-app {% if order.status in ['Delivered'] %}badge-success{% elif order.status in ['Cancelled'] %}badge-danger{% elif order.status in ['Shipped', 'Out for Delivery'] %}badge-info{% else %}badge-warning{% endif %}">{{ t_status(order.status) }}</span>
+                </div>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-mist/70 p-4">
+                    <p class="metric-label">{{ t('customer.amount', 'Amount') }}</p>
+                    <p class="mt-2 font-display text-2xl font-bold text-soil">&#8377;{{ "%.2f"|format(order.total_price) }}</p>
+                </div>
+                <div class="rounded-2xl bg-mist/70 p-4">
+                    <p class="metric-label">{{ t('customer.quantity', 'Quantity') }}</p>
+                    <p class="mt-2 font-display text-2xl font-bold text-soil">{{ order.quantity }}</p>
+                </div>
+                <div class="rounded-2xl bg-mist/70 p-4">
+                    <p class="metric-label">{{ t('customer.eta', 'ETA') }}</p>
+                    <p class="mt-2 text-lg font-extrabold text-soil">{{ order.estimated_delivery }}</p>
+                </div>
+            </div>
+
+            <div class="mt-5 space-y-3 rounded-[1.3rem] border border-soil/10 bg-white/70 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-sm font-bold text-soil">{{ t('customer.delivery_timeline', 'Delivery timeline') }}</p>
+                    <span class="badge-app badge-neutral">{{ order.tracking_code or '--' }}</span>
+                </div>
+                <p class="text-sm text-ink/62">{{ t('customer.current_location', 'Current location') }}: {{ order.current_location or t('customer.awaiting_movement', 'Awaiting movement') }}</p>
+                <div class="space-y-3">
+                    {% for update in order.tracking %}
+                    <div class="flex items-start gap-3">
+                        <span class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-mist text-xs text-leaf"><i class="fa-solid fa-check"></i></span>
+                        <div>
+                            <p class="font-semibold text-soil">{{ t_status(update.status) }}</p>
+                            <p class="text-sm text-ink/62">{{ update.location or '--' }}</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-ink/38">{{ update.update_date_display }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                {% if order.payment_status != 'confirmed' %}
+                <a href="{{ url_for('checkout', order_id=order.id) }}" class="btn-primary-app w-full justify-center">
+                    {{ t('customer.complete_payment', 'Complete payment') }}
+                    <i class="fa-solid fa-credit-card"></i>
+                </a>
+                {% endif %}
+                <a href="{{ url_for('invoice', order_id=order.id) }}" class="btn-outline-app w-full justify-center">
+                    {{ t('customer.invoice', 'Open invoice') }}
+                    <i class="fa-solid fa-file-invoice"></i>
+                </a>
+                <a href="{{ url_for('chat_start', crop_id=order.crop_id) }}" class="btn-outline-app w-full justify-center">
+                    {{ t('customer.chat_farmer', 'Chat with farmer') }}
+                    <i class="fa-solid fa-comments"></i>
+                </a>
+                {% if order.status in ['pending', 'Paid', 'Order Confirmed'] %}
+                <form action="{{ url_for('cancel_order', order_id=order.id) }}" method="POST" onsubmit="return confirm('Cancel this order?');">
+                    <button type="submit" class="btn-danger-app w-full justify-center">
+                        {{ t('customer.cancel_order', 'Cancel order') }}
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if order.delivery_address or order.buyer_note or order.fulfillment_window %}
+            <div class="mt-5 rounded-[1.3rem] border border-soil/10 bg-mist/55 p-4 text-sm text-ink/68">
+                {% if order.delivery_address %}<p><strong>{{ t('customer.address', 'Address') }}:</strong> {{ order.delivery_address }}</p>{% endif %}
+                {% if order.fulfillment_window %}<p class="mt-2"><strong>{{ t('customer.window', 'Window') }}:</strong> {{ order.fulfillment_window }}</p>{% endif %}
+                {% if order.buyer_note %}<p class="mt-2"><strong>{{ t('customer.note', 'Buyer note') }}:</strong> {{ order.buyer_note }}</p>{% endif %}
+            </div>
+            {% endif %}
+        </article>
+        {% else %}
+        <div class="empty-state xl:col-span-2">
+            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-mist text-2xl text-leaf/55">
+                <i class="fa-solid fa-basket-shopping"></i>
+            </div>
+            <h3 class="mt-5 font-display text-[2rem] font-bold text-soil">{{ t('customer.no_active_orders', 'No active orders right now') }}</h3>
+            <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink/65 sm:text-base">{{ t('customer.no_active_orders_desc', 'Once you place an order, its live progress, invoice, and chat controls will appear here.') }}</p>
+            <a href="{{ url_for('marketplace') }}" class="btn-primary-app mt-6">
+                {{ t('customer.browse_marketplace', 'Browse marketplace') }}
+                <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="mt-10 reveal">
+    <div>
+        <span class="section-kicker"><i class="fa-solid fa-clock-rotate-left"></i> {{ t('customer.archive', 'Archive') }}</span>
+        <h2 class="mt-3 font-display text-[1.9rem] font-bold text-soil">{{ t('customer.completed_orders', 'Completed and cancelled orders') }}</h2>
+    </div>
+
+    <div class="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        {% for order in order_history %}
+        <article class="surface-card reveal p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-soil">{{ order.crop_name }}</h3>
+                    <p class="mt-1 text-sm text-ink/55">{{ order.order_date_display }}</p>
+                    <p class="mt-1 text-sm text-ink/55">{{ order.invoice_number or '--' }}</p>
+                </div>
+                <span class="badge-app {% if order.status == 'Delivered' %}badge-success{% else %}badge-danger{% endif %}">{{ t_status(order.status) }}</span>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl bg-mist/70 p-4">
+                    <p class="metric-label">{{ t('customer.quantity', 'Quantity') }}</p>
+                    <p class="mt-2 font-display text-2xl font-bold text-soil">{{ order.quantity }}</p>
+                </div>
+                <div class="rounded-2xl bg-mist/70 p-4">
+                    <p class="metric-label">{{ t('customer.amount', 'Amount') }}</p>
+                    <p class="mt-2 font-display text-2xl font-bold text-soil">&#8377;{{ "%.2f"|format(order.total_price) }}</p>
+                </div>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <a href="{{ url_for('invoice', order_id=order.id) }}" class="btn-outline-app w-full justify-center">{{ t('customer.invoice', 'Open invoice') }}</a>
+                <a href="{{ url_for('chat_start', crop_id=order.crop_id) }}" class="btn-outline-app w-full justify-center">{{ t('customer.chat_farmer', 'Chat with farmer') }}</a>
+            </div>
+
+            {% if order.status == 'Delivered' %}
+            <div class="mt-5 rounded-[1.5rem] border border-soil/10 bg-white/70 p-4">
+                <p class="text-sm font-bold text-soil">{{ t('customer.review_farmer', 'Review this farmer') }}</p>
+                <p class="mt-1 text-sm text-ink/62">{{ t('customer.review_farmer_desc', 'Share feedback to strengthen trust in the network.') }}</p>
+                <form action="{{ url_for('submit_review') }}" method="POST" class="mt-4 space-y-4">
+                    <input type="hidden" name="order_id" value="{{ order.id }}">
+                    <input type="hidden" name="farmer_id" value="{{ order.farmer_id }}">
+                    <div class="relative flex flex-row-reverse justify-end gap-1">
+                        {% for i in range(5, 0, -1) %}
+                        <input class="star-input" type="radio" name="rating" value="{{ i }}" id="rate-{{ order.id }}-{{ i }}" required>
+                        <label class="star-label text-xl" for="rate-{{ order.id }}-{{ i }}">
+                            <i class="fa-solid fa-star"></i>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <textarea name="comment" class="textarea-shell" placeholder="How was the product quality and delivery experience?"></textarea>
+                    <button type="submit" class="btn-primary-app w-full justify-center">
+                        {{ t('customer.submit_review', 'Submit review') }}
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+        {% else %}
+        <div class="empty-state lg:col-span-2 xl:col-span-3">
+            <h3 class="font-display text-[2rem] font-bold text-soil">{{ t('customer.archive_empty', 'Your order archive is still empty') }}</h3>
+            <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-ink/65 sm:text-base">{{ t('customer.archive_empty_desc', 'Completed or cancelled orders will move here automatically for future reference.') }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
