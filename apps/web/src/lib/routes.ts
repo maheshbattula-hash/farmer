@@ -17,6 +17,8 @@ export function buildPath(
   switch (endpoint) {
     case "index":
       return "/";
+    case "download_app":
+      return "/download/app";
     case "set_language":
       return "/set_language";
     case "marketplace":

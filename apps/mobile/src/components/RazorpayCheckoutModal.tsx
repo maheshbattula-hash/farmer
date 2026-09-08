@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { FontAwesome6 } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 
@@ -46,6 +46,28 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
       name: data.customerName || "",
       email: data.customerEmail || "",
       contact: data.customerPhone || "",
+    },
+    config: {
+      display: {
+        blocks: {
+          upi: {
+            name: "Pay using UPI",
+            instruments: [{ method: "upi" }]
+          },
+          other: {
+            name: "Cards, Netbanking & Wallets",
+            instruments: [
+              { method: "card" },
+              { method: "netbanking" },
+              { method: "wallet" }
+            ]
+          }
+        },
+        sequence: ["block.upi", "block.other"],
+        preferences: {
+          show_default_blocks: true
+        }
+      }
     },
     theme: {
       color: "#1F6A3A",
@@ -176,6 +198,25 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
     }
   };
 
+  const handleShouldStartLoadWithRequest = (request: any) => {
+    const url = request.url;
+    if (!url) return true;
+
+    // Allow standard HTTP/HTTPS page navigation inside WebView
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("about:blank")) {
+      return true;
+    }
+
+    // Handle deep links for UPI apps (upi://, intent://, phonepe://, paytm://, gpay://, etc.)
+    try {
+      void Linking.openURL(url);
+    } catch (err) {
+      console.warn("Could not launch payment deep link:", url, err);
+    }
+
+    return false;
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={() => onCancel("User closed payment window.")}>
       <View style={s.container}>
@@ -192,6 +233,8 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
         <WebView
           source={{ html: htmlContent, baseUrl: "https://checkout.razorpay.com" }}
           onMessage={handleMessage}
+          onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+          originWhitelist={["*"]}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}

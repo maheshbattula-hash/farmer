@@ -4,16 +4,19 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 
 const workspaceRoot = process.cwd();
-const repoRoot = path.resolve(workspaceRoot, '../..');
-const rootEnvPath = path.join(repoRoot, '.env');
-const localEnvPath = path.join(workspaceRoot, '.env');
+const candidates = [
+  path.join(workspaceRoot, '.env'),
+  path.join(workspaceRoot, '..', '.env'),
+  path.join(workspaceRoot, '../..', '.env'),
+];
 
-if (fs.existsSync(rootEnvPath)) {
-  dotenv.config({ path: rootEnvPath, override: false });
+for (const envPath of candidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: true });
+  }
 }
-if (fs.existsSync(localEnvPath)) {
-  dotenv.config({ path: localEnvPath, override: false });
-}
+
+const repoRoot = path.resolve(workspaceRoot, fs.existsSync(path.join(workspaceRoot, 'package.json')) && !fs.existsSync(path.join(workspaceRoot, '../../package.json')) ? '..' : '../..');
 
 function value(name: string, defaultValue = ''): string {
   const resolved = process.env[name];
@@ -81,4 +84,16 @@ export const env = {
 export function ensureRuntimeDirectories(): void {
   fs.mkdirSync(env.mediaRoot, { recursive: true });
   fs.mkdirSync(env.uploadsRoot, { recursive: true });
+}
+
+export function validateRazorpayCredentials(): void {
+  if (!env.razorpayKeyId || !env.razorpayKeySecret) {
+    console.warn('\x1b[33m[Razorpay Warning]\x1b[0m RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing. Online payments will fail.');
+    return;
+  }
+  if (!env.razorpayKeyId.startsWith('rzp_test_')) {
+    console.warn('\x1b[33m[Razorpay Warning]\x1b[0m RAZORPAY_KEY_ID is not a TEST mode key. Ensure test mode key (rzp_test_...) is used.');
+  } else {
+    console.log(`\x1b[32m[Razorpay Configured]\x1b[0m TEST MODE active (Key ID: ${env.razorpayKeyId.slice(0, 12)}...)`);
+  }
 }

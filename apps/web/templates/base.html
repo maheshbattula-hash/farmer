@@ -63,31 +63,41 @@
                 </span>
             </a>
 
-            {% if show_mobile_header_language %}
-            <form action="{{ url_for('set_language') }}" method="POST" class="language-toggle-form site-header-language lg:hidden">
-                <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
-                <details class="language-menu">
-                    <summary class="language-toggle-button" aria-label="{{ t('language.label', 'Language') }}" title="{{ t('language.label', 'Language') }}">
-                        <span class="language-toggle-code">{{ current_language|upper }}</span>
-                        <i class="fa-solid fa-angle-down language-select-icon" aria-hidden="true"></i>
-                    </summary>
-                    <div class="language-toggle-panel" role="listbox" aria-label="{{ t('language.label', 'Language') }}">
-                        {% for option in language_options %}
-                        <button type="submit" name="language" value="{{ option.code }}" class="language-toggle-option {% if option.code == current_language %}is-active{% endif %}">
-                            <span class="language-toggle-option-code">{{ option.code|upper }}</span>
-                            <span class="language-toggle-option-label">{{ option.label }}</span>
-                        </button>
-                        {% endfor %}
-                    </div>
-                </details>
-            </form>
-            {% else %}
-            <button type="button" data-mobile-toggle data-target="primary-menu" data-backdrop="primary-menu-backdrop"
-                aria-expanded="false" aria-controls="primary-menu"
-                class="site-menu-toggle inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-soil/10 bg-white text-soil shadow-sm transition hover:border-leaf/30 hover:text-leaf lg:hidden">
-                <i class="fa-solid fa-bars"></i>
-            </button>
-            {% endif %}
+            <div class="site-header-mobile-actions flex items-center gap-2 lg:hidden">
+                <a href="{{ url_for('download_app') }}" download="smart-farmer.apk"
+                    class="site-header-download"
+                    title="{{ t('nav.download_app_tooltip', 'Download Smart Farmer Android App (.apk)') }}"
+                    aria-label="{{ t('nav.download_app', 'Download App') }}">
+                    <i class="fa-brands fa-android mobile-dl-icon" aria-hidden="true"></i>
+                    <span class="mobile-dl-badge">APK</span>
+                </a>
+
+                {% if show_mobile_header_language %}
+                <form action="{{ url_for('set_language') }}" method="POST" class="language-toggle-form site-header-language">
+                    <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+                    <details class="language-menu">
+                        <summary class="language-toggle-button" aria-label="{{ t('language.label', 'Language') }}" title="{{ t('language.label', 'Language') }}">
+                            <span class="language-toggle-code">{{ current_language|upper }}</span>
+                            <i class="fa-solid fa-angle-down language-select-icon" aria-hidden="true"></i>
+                        </summary>
+                        <div class="language-toggle-panel" role="listbox" aria-label="{{ t('language.label', 'Language') }}">
+                            {% for option in language_options %}
+                            <button type="submit" name="language" value="{{ option.code }}" class="language-toggle-option {% if option.code == current_language %}is-active{% endif %}">
+                                <span class="language-toggle-option-code">{{ option.code|upper }}</span>
+                                <span class="language-toggle-option-label">{{ option.label }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </form>
+                {% else %}
+                <button type="button" data-mobile-toggle data-target="primary-menu" data-backdrop="primary-menu-backdrop"
+                    aria-expanded="false" aria-controls="primary-menu"
+                    class="site-menu-toggle inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-soil/10 bg-white text-soil shadow-sm transition hover:border-leaf/30 hover:text-leaf">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                {% endif %}
+            </div>
 
             <div id="primary-menu" class="mobile-menu hidden lg:flex lg:items-center lg:gap-4">
                 <div class="flex flex-col gap-2 rounded-[1.45rem] border border-soil/10 bg-white/95 p-4 shadow-bloom lg:flex-row lg:items-center lg:rounded-full lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
@@ -177,6 +187,28 @@
                             </div>
                         </details>
                     </form>
+                    <a href="{{ url_for('download_app') }}" download="smart-farmer.apk"
+                        class="btn-download-app hidden lg:inline-flex"
+                        title="{{ t('nav.download_app_tooltip', 'Download Smart Farmer Android App (.apk)') }}"
+                        aria-label="{{ t('nav.download_app', 'Download App') }}">
+                        <span class="download-icon-wrap" aria-hidden="true">
+                            <i class="fa-brands fa-android"></i>
+                        </span>
+                        <span class="btn-download-text font-semibold">{{ t('nav.download_app', 'Download App') }}</span>
+                        <span class="btn-download-badge">APK</span>
+                        <i class="fa-solid fa-arrow-down download-arrow-icon" aria-hidden="true"></i>
+                    </a>
+                    <a href="{{ url_for('download_app') }}" download="smart-farmer.apk"
+                        class="btn-download-app lg:hidden"
+                        title="{{ t('nav.download_app_tooltip', 'Download Smart Farmer Android App (.apk)') }}"
+                        aria-label="{{ t('nav.download_app', 'Download App') }}">
+                        <span class="download-icon-wrap" aria-hidden="true">
+                            <i class="fa-brands fa-android"></i>
+                        </span>
+                        <span class="btn-download-text font-semibold">{{ t('nav.download_app', 'Download App (APK)') }}</span>
+                        <span class="btn-download-badge">APK</span>
+                        <i class="fa-solid fa-arrow-down download-arrow-icon" aria-hidden="true"></i>
+                    </a>
                 </div>
             </div>
         </nav>
@@ -230,6 +262,10 @@
                 <div class="footer-links">
                     <a href="{{ url_for('login') }}">{{ t('footer.customer_login', 'Customer Login') }}</a>
                     <a href="{{ url_for('admin_login') }}">{{ t('nav.admin_access', 'Admin Access') }}</a>
+                    <a href="{{ url_for('download_app') }}" download="smart-farmer.apk" class="inline-flex items-center gap-1.5 font-semibold text-leaf hover:underline">
+                        <i class="fa-brands fa-android"></i>
+                        <span>{{ t('nav.download_app', 'Download App (APK)') }}</span>
+                    </a>
                 </div>
             </div>
         </div>

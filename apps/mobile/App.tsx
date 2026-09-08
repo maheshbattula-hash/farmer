@@ -1,1 +1,5 @@
-export { default } from "./src/mobile/App";
+import { registerRootComponent } from 'expo';
+import App from './src/mobile/App';
+
+
+registerRootComponent(App);

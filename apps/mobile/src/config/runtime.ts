@@ -41,7 +41,17 @@ function normalizeApiUrl(candidate: string): string {
 
   try {
     const url = new URL(sanitized);
-    if (!url.port || url.port === "3000") {
+    // Only force port 8000 for localhost / raw IP addresses.
+    // Tunnel URLs (ngrok, Cloudflare, etc.) use standard HTTPS port 443
+    // and must NOT have a port appended.
+    const isLocal =
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      /^10\./.test(url.hostname) ||
+      /^192\.168\./.test(url.hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(url.hostname);
+
+    if (isLocal && (!url.port || url.port === "3000")) {
       url.port = "8000";
     }
     return url.toString().replace(/\/$/, "");
@@ -51,6 +61,13 @@ function normalizeApiUrl(candidate: string): string {
 }
 
 export function resolveApiUrl(): string {
+  // If running in a browser on localhost / 127.0.0.1, connect directly to local API
+  if (typeof window !== "undefined" && window.location) {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return `http://${window.location.hostname}:8000`;
+    }
+  }
+
   const manualUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL || "");
   if (manualUrl) {
     return manualUrl;

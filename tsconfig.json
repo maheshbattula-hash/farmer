@@ -3,5 +3,6 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "extends": "expo/tsconfig.base"
 }

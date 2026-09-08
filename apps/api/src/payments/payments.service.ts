@@ -107,8 +107,20 @@ export class PaymentsService {
         },
       });
     } catch (err: any) {
+      const statusCode = err?.statusCode || err?.status || 400;
+      const description = err?.error?.description || err?.message || 'Unknown gateway error';
+      console.error('[Razorpay API Error]', {
+        statusCode,
+        code: err?.error?.code || 'GATEWAY_ERROR',
+        description,
+      });
+      const isAuthError = description.toLowerCase().includes('authentication failed');
+      const userMessage = isAuthError
+        ? 'Unable to create Razorpay order. Please check the backend payment configuration and try again.'
+        : `Failed to create Razorpay order: ${description}`;
+
       fail(
-        `Failed to create Razorpay order: ${err?.error?.description || err?.message || 'Razorpay API error'}`,
+        userMessage,
         'razorpay_order_creation_failed',
         HttpStatus.BAD_REQUEST,
       );

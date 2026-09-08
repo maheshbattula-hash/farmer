@@ -58,9 +58,8 @@ const colors = {
   red: "#E23F32", amber: "#C07E12", blue: "#1A5FA8", purple: "#6B3FA0",
   orange: "#C4601A",
 };
-const splashLightBackground = require("../../assets/splash-light.jpeg");
-const splashDarkBackground = require("../../assets/splash-dark.jpeg");
-
+const splashLightBackground = require("../../assets/splash-light.png");
+const splashDarkBackground = require("../../assets/splash-dark.png");
 // ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App(): React.JSX.Element {
   const colorScheme = useColorScheme();
@@ -1123,6 +1122,13 @@ function Notice({ tone, text }: { tone: "error" | "info" | "otp"; text: string }
   return <View style={[s.notice, tone === "error" ? { backgroundColor: "#FBEAEA", borderColor: "#F3C5C1" } : tone === "otp" ? { backgroundColor: "#FFF2D8", borderColor: "#F0CF8E" } : { backgroundColor: "#EDF6EE", borderColor: "#CFE2D0" }]}><Text style={s.noticeText}>{text}</Text></View>;
 }
 
+function networkErrorMsg(): string {
+  if (typeof window !== "undefined" && window.location?.protocol === "https:" && API_URL.startsWith("http://")) {
+    return `Mixed Content Block: You opened the app over HTTPS (${window.location.host}), but the API is HTTP (${API_URL}). Please open http://localhost:8081 in your browser, or scan the QR code in Expo Go on your mobile device.`;
+  }
+  return `Unable to reach ${API_URL}. Ensure backend API is running (npm run dev:api) and EXPO_PUBLIC_API_URL is set in apps/mobile/.env for phone.`;
+}
+
 // ─── API Helpers ─────────────────────────────────────────────────────────────
 async function apiRequest(path: string, body: Record<string, unknown>): Promise<ApiResult> {
   try {
@@ -1134,7 +1140,7 @@ async function apiRequest(path: string, body: Record<string, unknown>): Promise<
     const message = txt(payload.message) || `Request failed (${response.status}).`;
     return { ok: response.ok && Boolean(payload.success), message, payload };
   } catch {
-    return { ok: false, message: `Unable to reach ${API_URL}. Set EXPO_PUBLIC_API_URL in apps/mobile/.env for a device.`, payload: {} };
+    return { ok: false, message: networkErrorMsg(), payload: {} };
   }
 }
 
@@ -1147,7 +1153,7 @@ async function authGet(path: string, token: string): Promise<ApiResult> {
     const message = txt(payload.message) || `Request failed (${response.status}).`;
     return { ok: response.ok && Boolean(payload.success), message, payload };
   } catch {
-    return { ok: false, message: `Unable to reach ${API_URL}`, payload: {} };
+    return { ok: false, message: networkErrorMsg(), payload: {} };
   }
 }
 
@@ -1160,7 +1166,7 @@ async function authPost(path: string, body: Record<string, unknown>, token: stri
     const message = txt(payload.message) || `Request failed (${response.status}).`;
     return { ok: response.ok && Boolean(payload.success), message, payload };
   } catch {
-    return { ok: false, message: `Unable to reach ${API_URL}`, payload: {} };
+    return { ok: false, message: networkErrorMsg(), payload: {} };
   }
 }
 
@@ -1173,7 +1179,7 @@ async function authPatch(path: string, body: Record<string, unknown>, token: str
     const message = txt(payload.message) || `Request failed (${response.status}).`;
     return { ok: response.ok && Boolean(payload.success), message, payload };
   } catch {
-    return { ok: false, message: `Unable to reach ${API_URL}`, payload: {} };
+    return { ok: false, message: networkErrorMsg(), payload: {} };
   }
 }
 

@@ -99,6 +99,14 @@
                         <i class="fa-solid fa-file-export"></i>
                         {{ t('admin.header.review_reports', 'Review reports') }}
                     </a>
+                    <a href="{{ url_for('download_app') }}" download="smart-farmer.apk"
+                        class="btn-download-app justify-center whitespace-nowrap"
+                        title="{{ t('nav.download_app_tooltip', 'Download Smart Farmer Android App (.apk)') }}"
+                        aria-label="{{ t('nav.download_app', 'Download App') }}">
+                        <span class="download-icon-wrap" aria-hidden="true"><i class="fa-brands fa-android"></i></span>
+                        <span class="btn-download-text font-semibold">{{ t('nav.download_app', 'Download App') }}</span>
+                        <span class="btn-download-badge">APK</span>
+                    </a>
                     <form action="{{ url_for('set_language') }}" method="POST" class="language-toggle-form admin-language-picker">
                         <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
                         <details class="language-menu">
