@@ -6,6 +6,16 @@
     "entryPoint": "./index.js",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/splash-light.jpeg",
+    "splash": {
+      "image": "./assets/splash-light.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#f7f6f1",
+      "dark": {
+        "image": "./assets/splash-dark.jpeg",
+        "backgroundColor": "#102116"
+      }
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -26,6 +36,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.smartfarmer.platform",
+      "splash": {
+        "image": "./assets/splash-light.jpeg",
+        "resizeMode": "contain",
+        "backgroundColor": "#f7f6f1",
+        "dark": {
+          "image": "./assets/splash-dark.jpeg",
+          "backgroundColor": "#102116"
+        }
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "Smart Farmer uses the camera to capture crop images for disease prediction.",
         "NSPhotoLibraryUsageDescription": "Smart Farmer uses your photo library to attach crop images.",
@@ -36,6 +55,15 @@
     "android": {
       "package": "com.smartfarmer.platform",
       "usesCleartextTraffic": true,
+      "splash": {
+        "image": "./assets/splash-light.jpeg",
+        "resizeMode": "contain",
+        "backgroundColor": "#f7f6f1",
+        "dark": {
+          "image": "./assets/splash-dark.jpeg",
+          "backgroundColor": "#102116"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
