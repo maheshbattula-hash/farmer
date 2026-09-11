@@ -6,17 +6,22 @@
     "entryPoint": "./index.js",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash-light.jpeg",
-      "resizeMode": "cover",
-      "backgroundColor": "#f7f6f1",
-      "dark": {
-        "image": "./assets/splash-dark.jpeg",
-        "backgroundColor": "#102116"
-      }
-    },
     "assetBundlePatterns": [
       "**/*"
+    ],
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-light.jpeg",
+          "resizeMode": "cover",
+          "backgroundColor": "#f7f6f1",
+          "dark": {
+            "image": "./assets/splash-dark.jpeg",
+            "backgroundColor": "#102116"
+          }
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

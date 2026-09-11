@@ -12,6 +12,7 @@
     "start:lan": "expo start --clear --lan",
     "start:tunnel": "expo start --clear --tunnel",
     "start:fix": "powershell -ExecutionPolicy Bypass -File ../../scripts/dev/start-mobile-clear.ps1",
+    "start:localtunnel": "node ./scripts/start-with-tunnel.js",
     "dev:mobile:fix": "npm run start:fix",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -28,6 +29,7 @@
     "expo-image-picker": "~57.0.16",
     "expo-location": "~57.0.16",
     "expo-notifications": "~57.0.17",
+    "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -38,9 +40,19 @@
   },
   "devDependencies": {
     "@types/react": "~18.3.12",
+    "localtunnel": "^2.0.2",
     "typescript": "~5.9.2"
   },
   "engines": {
     "node": ">=20.19.0"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@types/react",
+        "typescript",
+        "expo"
+      ]
+    }
   }
 }

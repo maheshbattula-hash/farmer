@@ -8,18 +8,23 @@
     "updates": {
       "enabled": false
     },
-
-    "splash": {
-      "image": "./assets/splash-light.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#f7f6f1",
-      "dark": {
-        "image": "./assets/splash-dark.png"
-      }
-    },
-
     "assetBundlePatterns": [
       "**/*"
+    ],
+
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-light.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#f7f6f1",
+          "dark": {
+            "image": "./assets/splash-dark.png",
+            "backgroundColor": "#102116"
+          }
+        }
+      ]
     ],
 
     "ios": {

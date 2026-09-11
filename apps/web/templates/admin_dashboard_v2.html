@@ -584,23 +584,114 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="application/json" id="admin-dashboard-data">
+{
+    "revenueLabels": {{ revenue_trend|map(attribute=0)|list|reverse|list|tojson }},
+    "revenueData": {{ revenue_trend|map(attribute=1)|list|reverse|list|tojson }},
+    "categoryLabels": {{ category_counts|map(attribute=0)|list|tojson }},
+    "categoryData": {{ category_counts|map(attribute=1)|list|tojson }},
+    "sidebarCopy": {
+        "expandSidebar": {{ t('admin.sidebar.expand', 'Expand sidebar')|tojson }},
+        "collapseSidebar": {{ t('admin.sidebar.collapse', 'Collapse sidebar')|tojson }}
+    },
+    "revenueText": {{ t('admin.chart.revenue', 'Revenue')|tojson }}
+}
+</script>
 <script>
-    const revenueLabels = {{ revenue_trend|map(attribute=0)|list|reverse|list|tojson }};
-    const revenueData = {{ revenue_trend|map(attribute=1)|list|reverse|list|tojson }};
-    const categoryLabels = {{ category_counts|map(attribute=0)|list|tojson }};
-    const categoryData = {{ category_counts|map(attribute=1)|list|tojson }};
-    const sidebarCopy = {
-        expandSidebar: {{ t('admin.sidebar.expand', 'Expand sidebar')|tojson }},
-        collapseSidebar: {{ t('admin.sidebar.collapse', 'Collapse sidebar')|tojson }}
+    const adminDashboardData = JSON.parse(document.getElementById('admin-dashboard-data')?.textContent || '{}');
+    const revenueLabels = adminDashboardData.revenueLabels || [];
+    const revenueData = adminDashboardData.revenueData || [];
+    const categoryLabels = adminDashboardData.categoryLabels || [];
+    const categoryData = adminDashboardData.categoryData || [];
+    const sidebarCopy = adminDashboardData.sidebarCopy || {};
+    const revenueText = adminDashboardData.revenueText || 'Revenue';
+
+    const desktopBreakpoint = 1024;
+    const toggleButton = document.getElementById('admin-sidebar-toggle');
+    const collapseButton = document.getElementById('admin-sidebar-collapse');
+    const collapseButtonIcon = document.getElementById('admin-sidebar-collapse-icon');
+    const closeButton = document.getElementById('admin-sidebar-close');
+    const sidebar = document.getElementById('admin-sidebar');
+    const adminShell = document.querySelector('.admin-shell');
+    const backdrop = document.getElementById('admin-sidebar-backdrop');
+    const navLinks = sidebar ? sidebar.querySelectorAll('a[href^="#"]') : [];
+
+    const setCollapsedState = (collapsed) => {
+        if (!adminShell) return;
+        adminShell.classList.toggle('is-collapsed', collapsed);
+        if (collapseButtonIcon) {
+            collapseButtonIcon.classList.toggle('fa-angle-right', collapsed);
+            collapseButtonIcon.classList.toggle('fa-angle-left', !collapsed);
+        }
+        if (collapseButton) {
+            const label = collapsed ? sidebarCopy.expandSidebar : sidebarCopy.collapseSidebar;
+            collapseButton.setAttribute('aria-label', label);
+            collapseButton.setAttribute('title', label);
+        }
+        localStorage.setItem('adminSidebarCollapsed', collapsed ? 'true' : 'false');
     };
+
+    if (typeof window.sfTranslateRuntimeObject === 'function') {
+        window.sfTranslateRuntimeObject(sidebarCopy).then(() => {
+            if (window.innerWidth >= desktopBreakpoint) {
+                setCollapsedState(adminShell?.classList.contains('is-collapsed'));
+            }
+        }).catch(() => undefined);
+    }
+
+    const openSidebar = () => {
+        if (!sidebar || window.innerWidth >= desktopBreakpoint) return;
+        sidebar.classList.add('is-open');
+        backdrop?.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        toggleButton?.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeSidebar = () => {
+        if (!sidebar || window.innerWidth >= desktopBreakpoint) return;
+        sidebar.classList.remove('is-open');
+        backdrop?.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        toggleButton?.setAttribute('aria-expanded', 'false');
+    };
+
+    if (window.innerWidth >= desktopBreakpoint) {
+        setCollapsedState(localStorage.getItem('adminSidebarCollapsed') === 'true');
+    }
+
+    toggleButton?.addEventListener('click', openSidebar);
+    collapseButton?.addEventListener('click', () => {
+        if (window.innerWidth < desktopBreakpoint) return;
+        setCollapsedState(!adminShell?.classList.contains('is-collapsed'));
+    });
+    closeButton?.addEventListener('click', closeSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+    navLinks.forEach((link) => link.addEventListener('click', closeSidebar));
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeSidebar();
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= desktopBreakpoint) {
+            sidebar?.classList.remove('is-open');
+            backdrop?.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            toggleButton?.setAttribute('aria-expanded', 'false');
+            setCollapsedState(localStorage.getItem('adminSidebarCollapsed') === 'true');
+        } else if (!sidebar?.classList.contains('is-open')) {
+            backdrop?.classList.add('hidden');
+            adminShell?.classList.remove('is-collapsed');
+        }
+    });
 
     const revenueChart = document.getElementById('revenueChart');
     const categoryChart = document.getElementById('categoryChart');
 
     (async () => {
         const chartText = typeof window.sfTranslateRuntimeStrings === 'function'
-            ? await window.sfTranslateRuntimeStrings([{{ t('admin.chart.revenue', 'Revenue')|tojson }}, ...categoryLabels]).catch(() => [{{ t('admin.chart.revenue', 'Revenue')|tojson }}, ...categoryLabels])
-            : [{{ t('admin.chart.revenue', 'Revenue')|tojson }}, ...categoryLabels];
+            ? await window.sfTranslateRuntimeStrings([revenueText, ...categoryLabels]).catch(() => [revenueText, ...categoryLabels])
+            : [revenueText, ...categoryLabels];
         const revenueLabel = chartText[0];
         const translatedCategoryLabels = chartText.slice(1);
 
@@ -685,84 +776,5 @@
             });
         }
     })();
-
-    if (typeof window.sfTranslateRuntimeObject === 'function') {
-        window.sfTranslateRuntimeObject(sidebarCopy).then(() => {
-            if (window.innerWidth >= desktopBreakpoint) {
-                setCollapsedState(adminShell?.classList.contains('is-collapsed'));
-            }
-        }).catch(() => undefined);
-    }
-
-    const toggleButton = document.getElementById('admin-sidebar-toggle');
-    const collapseButton = document.getElementById('admin-sidebar-collapse');
-    const collapseButtonIcon = document.getElementById('admin-sidebar-collapse-icon');
-    const closeButton = document.getElementById('admin-sidebar-close');
-    const sidebar = document.getElementById('admin-sidebar');
-    const adminShell = document.querySelector('.admin-shell');
-    const backdrop = document.getElementById('admin-sidebar-backdrop');
-    const navLinks = sidebar ? sidebar.querySelectorAll('a[href^="#"]') : [];
-    const desktopBreakpoint = 1024;
-
-    const setCollapsedState = (collapsed) => {
-        if (!adminShell) return;
-        adminShell.classList.toggle('is-collapsed', collapsed);
-        if (collapseButtonIcon) {
-            collapseButtonIcon.classList.toggle('fa-angle-right', collapsed);
-            collapseButtonIcon.classList.toggle('fa-angle-left', !collapsed);
-        }
-        if (collapseButton) {
-            const label = collapsed ? sidebarCopy.expandSidebar : sidebarCopy.collapseSidebar;
-            collapseButton.setAttribute('aria-label', label);
-            collapseButton.setAttribute('title', label);
-        }
-        localStorage.setItem('adminSidebarCollapsed', collapsed ? 'true' : 'false');
-    };
-
-    const openSidebar = () => {
-        if (!sidebar || window.innerWidth >= desktopBreakpoint) return;
-        sidebar.classList.add('is-open');
-        backdrop?.classList.remove('hidden');
-        document.body.classList.add('overflow-hidden');
-        toggleButton?.setAttribute('aria-expanded', 'true');
-    };
-
-    const closeSidebar = () => {
-        if (!sidebar || window.innerWidth >= desktopBreakpoint) return;
-        sidebar.classList.remove('is-open');
-        backdrop?.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-        toggleButton?.setAttribute('aria-expanded', 'false');
-    };
-
-    if (window.innerWidth >= desktopBreakpoint) {
-        setCollapsedState(localStorage.getItem('adminSidebarCollapsed') === 'true');
-    }
-
-    toggleButton?.addEventListener('click', openSidebar);
-    collapseButton?.addEventListener('click', () => {
-        if (window.innerWidth < desktopBreakpoint) return;
-        setCollapsedState(!adminShell?.classList.contains('is-collapsed'));
-    });
-    closeButton?.addEventListener('click', closeSidebar);
-    backdrop?.addEventListener('click', closeSidebar);
-    navLinks.forEach((link) => link.addEventListener('click', closeSidebar));
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSidebar();
-    });
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth >= desktopBreakpoint) {
-            sidebar?.classList.remove('is-open');
-            backdrop?.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
-            toggleButton?.setAttribute('aria-expanded', 'false');
-            setCollapsedState(localStorage.getItem('adminSidebarCollapsed') === 'true');
-        } else if (!sidebar?.classList.contains('is-open')) {
-            backdrop?.classList.add('hidden');
-            adminShell?.classList.remove('is-collapsed');
-        }
-    });
 </script>
 {% endblock %}

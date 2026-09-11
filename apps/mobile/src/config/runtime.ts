@@ -69,14 +69,20 @@ export function resolveApiUrl(): string {
   }
 
   const manualUrl = normalizeApiUrl(process.env.EXPO_PUBLIC_API_URL || "");
-  if (manualUrl) {
-    return manualUrl;
-  }
 
   const host =
     extractHost((Constants.expoConfig as ExpoConfigWithHost | null)?.hostUri) ||
     extractHost((Constants.expoGoConfig as ExpoGoConfigWithDebuggerHost | null)?.debuggerHost) ||
     extractHost((Constants.platform as ExpoConfigWithHost | null)?.hostUri);
+
+  if (manualUrl) {
+    // If running on a physical phone or Expo Go and the user has localhost/127.0.0.1 configured,
+    // swap localhost with the host machine IP so requests don't fail against the phone's loopback
+    if (host && (manualUrl.includes("localhost") || manualUrl.includes("127.0.0.1"))) {
+      return manualUrl.replace("localhost", host).replace("127.0.0.1", host);
+    }
+    return manualUrl;
+  }
 
   if (host) {
     return `http://${host}:8000`;
