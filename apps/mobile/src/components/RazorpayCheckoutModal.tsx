@@ -47,28 +47,6 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
       email: data.customerEmail || "",
       contact: data.customerPhone || "",
     },
-    config: {
-      display: {
-        blocks: {
-          upi: {
-            name: "Pay using UPI",
-            instruments: [{ method: "upi" }]
-          },
-          other: {
-            name: "Cards, Netbanking & Wallets",
-            instruments: [
-              { method: "card" },
-              { method: "netbanking" },
-              { method: "wallet" }
-            ]
-          }
-        },
-        sequence: ["block.upi", "block.other"],
-        preferences: {
-          show_default_blocks: true
-        }
-      }
-    },
     theme: {
       color: "#1F6A3A",
     },
@@ -136,9 +114,9 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   event: 'SUCCESS',
                   payload: {
-                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_order_id: response.razorpay_order_id || '${data.razorpayOrderId}',
                     razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature
+                    razorpay_signature: response.razorpay_signature || ''
                   }
                 }));
               }
@@ -161,7 +139,7 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
                 if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     event: 'FAILED',
-                    error: errObj.description || errObj.reason || 'Payment failed'
+                    error: errObj.description || errObj.reason || 'Payment was declined or cancelled.'
                   }));
                 }
               });
@@ -189,9 +167,9 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
       if (data.event === "SUCCESS" && data.payload) {
         onSuccess(data.payload);
       } else if (data.event === "CANCELLED") {
-        onCancel("Payment was cancelled by user.");
+        onCancel("Payment window was dismissed.");
       } else if (data.event === "FAILED" || data.event === "ERROR") {
-        onError(data.error || "Payment failed or was declined.");
+        onError(data.error || "Payment was not completed.");
       }
     } catch {
       onError("Failed to parse payment gateway response.");
@@ -202,12 +180,46 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
     const url = request.url;
     if (!url) return true;
 
+    // Check if redirect contains successful payment parameters
+    if (url.includes("razorpay_payment_id=") || url.includes("payment_id=")) {
+      try {
+        const parsed = new URL(url);
+        const paymentId = parsed.searchParams.get("razorpay_payment_id") || parsed.searchParams.get("payment_id") || "";
+        const orderId = parsed.searchParams.get("razorpay_order_id") || data.razorpayOrderId;
+        const signature = parsed.searchParams.get("razorpay_signature") || "";
+        if (paymentId) {
+          onSuccess({
+            razorpay_order_id: orderId,
+            razorpay_payment_id: paymentId,
+            razorpay_signature: signature,
+          });
+          return false;
+        }
+      } catch (_) {}
+    }
+
     // Allow standard HTTP/HTTPS page navigation inside WebView
     if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("about:blank")) {
       return true;
     }
 
-    // Handle deep links for UPI apps (upi://, intent://, phonepe://, paytm://, gpay://, etc.)
+    // Handle deep links for Android intent URLs
+    if (url.startsWith("intent://")) {
+      try {
+        const upiMatch = url.match(/scheme=([^;]+)/);
+        const scheme = upiMatch ? upiMatch[1] : "upi";
+        const pathAndQuery = url.replace(/^intent:\/\//, "").split("#Intent")[0];
+        const directUrl = `${scheme}://${pathAndQuery}`;
+        Promise.resolve(Linking.openURL(directUrl)).catch(() => {
+          Promise.resolve(Linking.openURL(`upi://${pathAndQuery}`)).catch((e) => console.warn("Could not launch UPI:", e));
+        });
+      } catch (err) {
+        console.warn("Could not launch payment intent:", url, err);
+      }
+      return false;
+    }
+
+    // Handle standard deep links for UPI apps (upi://, phonepe://, paytmmp://, etc.)
     try {
       void Linking.openURL(url);
     } catch (err) {
@@ -234,9 +246,14 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
           source={{ html: htmlContent, baseUrl: "https://checkout.razorpay.com" }}
           onMessage={handleMessage}
           onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-          originWhitelist={["*"]}
-          javaScriptEnabled={true}
+          setSupportMultipleWindows={false}
+          thirdPartyCookiesEnabled={true}
+          sharedCookiesEnabled={true}
           domStorageEnabled={true}
+          javaScriptEnabled={true}
+          mixedContentMode="always"
+          javaScriptCanOpenWindowsAutomatically={true}
+          originWhitelist={["*"]}
           startInLoadingState={true}
           renderLoading={() => (
             <View style={s.loader}>
@@ -246,6 +263,23 @@ export default function RazorpayCheckoutModal({ visible, data, onSuccess, onCanc
           )}
           style={{ flex: 1 }}
         />
+
+        <View style={s.bottomBar}>
+          <Text style={s.bottomNote}>Paid via UPI or Bank App?</Text>
+          <Pressable
+            style={s.verifyBtn}
+            onPress={() => {
+              onSuccess({
+                razorpay_order_id: data.razorpayOrderId,
+                razorpay_payment_id: "",
+                razorpay_signature: "",
+              });
+            }}
+          >
+            <FontAwesome6 name="circle-check" size={15} color="#fff" />
+            <Text style={s.verifyBtnText}>Confirm / Verify Payment</Text>
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -291,4 +325,34 @@ const s = StyleSheet.create({
     color: "#6D776E",
     fontWeight: "600",
   },
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#E3E9E0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bottomNote: {
+    fontSize: 13,
+    color: "#6D776E",
+    fontWeight: "500",
+  },
+  verifyBtn: {
+    backgroundColor: "#1F6A3A",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  verifyBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });
+

@@ -51,7 +51,9 @@ type Order = {
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const API_URL = resolveApiUrl().replace(/\/$/, "");
+function getBaseApiUrl(): string {
+  return resolveApiUrl().replace(/\/$/, "");
+}
 const colors = {
   bg: "#F7F5EE", card: "#FFFFFF", green: "#1F6A3A", dark: "#174F2D",
   soft: "#E7F3E6", text: "#1E271F", muted: "#6D776E", border: "#E3E9E0",
@@ -688,17 +690,20 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
   const handleRazorpaySuccess = async (rzpPayload: RazorpaySuccessPayload) => {
     setRzpModalVisible(false);
     setPayBusy("Verifying payment with server...");
+    const orderIdToVerify = pendingOrderId;
     const res = await authPost("/api/payments/verify", {
-      internalOrderId: pendingOrderId,
+      internalOrderId: orderIdToVerify,
       razorpay_order_id: rzpPayload.razorpay_order_id,
       razorpay_payment_id: rzpPayload.razorpay_payment_id,
       razorpay_signature: rzpPayload.razorpay_signature,
     }, token);
     setPayBusy("");
-    if (res.ok) {
+
+    if (res.ok && res.payload.verified) {
+      const ref = txt((res.payload.gateway as any)?.razorpay_payment_id) || rzpPayload.razorpay_payment_id || "CONFIRMED";
       setPaySuccess({
         method: "Online Payment (Razorpay)",
-        reference: rzpPayload.razorpay_payment_id,
+        reference: ref,
         cropName: checkout?.crop?.name || "Order",
         amount: checkout ? (Number(checkout.crop.price || 0) * checkout.qty).toFixed(2) : "",
       });
@@ -706,9 +711,84 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
       setRzpCheckoutData(null);
       setPendingOrderId("");
       loadOrders();
-      Alert.alert("Payment Successful 🎉", "Your payment has been verified by the server!");
+      Alert.alert(
+        "Payment Successful 🎉",
+        `Your payment has been verified by the server!\n\nOrder ID: #${orderIdToVerify.slice(-6).toUpperCase()}\nPayment Reference: ${ref}`
+      );
     } else {
-      Alert.alert("Verification Failed ❌", res.message || "Payment signature verification failed. Order remains unpaid.");
+      loadOrders();
+      Alert.alert(
+        "Payment Verification Notice",
+        res.message || "Payment is pending confirmation. Your order has been placed and you can check its status anytime in your Orders tab."
+      );
+      setCheckout(null);
+      setRzpCheckoutData(null);
+      setPendingOrderId("");
+    }
+  };
+
+  const handleRazorpayDismiss = async (message?: string, isError = false) => {
+    setRzpModalVisible(false);
+    const orderIdToCheck = pendingOrderId;
+    const rzpOrderIdToCheck = rzpCheckoutData?.razorpayOrderId;
+
+    if (!orderIdToCheck) {
+      setRzpCheckoutData(null);
+      return;
+    }
+
+    setPayBusy("Checking payment status with server...");
+    const res = await authPost("/api/payments/verify", {
+      internalOrderId: orderIdToCheck,
+      razorpay_order_id: rzpOrderIdToCheck,
+    }, token);
+    setPayBusy("");
+
+    if (res.ok && res.payload.verified) {
+      const ref = txt((res.payload.gateway as any)?.razorpay_payment_id) || "CONFIRMED";
+      setPaySuccess({
+        method: "Online Payment (Razorpay)",
+        reference: ref,
+        cropName: checkout?.crop?.name || "Order",
+        amount: checkout ? (Number(checkout.crop.price || 0) * checkout.qty).toFixed(2) : "",
+      });
+      setCheckout(null);
+      setRzpCheckoutData(null);
+      setPendingOrderId("");
+      loadOrders();
+      Alert.alert(
+        "Payment Confirmed 🎉",
+        `Payment was confirmed by the gateway!\n\nOrder ID: #${orderIdToCheck.slice(-6).toUpperCase()}\nPayment Reference: ${ref}`
+      );
+    } else {
+      loadOrders();
+      let alertTitle = "Payment Status";
+      let alertMsg = res.message || "Your order has been placed and is pending payment. You can complete payment from your Orders tab.";
+
+      if (isError) {
+        alertTitle = "Payment Incomplete";
+        alertMsg = message ? `${message}\n\nYour order is saved as pending in your Orders tab so you can retry.` : alertMsg;
+      } else {
+        alertTitle = "Payment Cancelled";
+        alertMsg = "Payment was cancelled. Your order is saved as pending in your Orders tab so you can retry.";
+      }
+
+      Alert.alert(alertTitle, alertMsg);
+      setRzpCheckoutData(null);
+      setPendingOrderId("");
+      setCheckout(null);
+    }
+  };
+
+  const verifyOrderPaymentStatus = async (orderId: string) => {
+    setPayBusy("Verifying payment status...");
+    const res = await authPost("/api/payments/verify", { internalOrderId: orderId }, token);
+    setPayBusy("");
+    if (res.ok && res.payload.verified) {
+      Alert.alert("Payment Confirmed 🎉", "This order is paid and confirmed!");
+      loadOrders();
+    } else {
+      Alert.alert("Payment Status", res.message || "Payment has not been confirmed yet.");
     }
   };
 
@@ -893,11 +973,37 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
               <Text style={s.cardMeta}>Payment: {order.payment_status} · {order.payment_method}</Text>
               {order.tracking_code ? <Text style={s.cardMeta}>Tracking: {order.tracking_code}</Text> : null}
               {order.invoice_number ? <Text style={s.cardMeta}>Invoice: #{order.invoice_number}</Text> : null}
-              {["Order Placed", "Order Confirmed"].includes(order.status) && (
-                <Pressable style={[s.miniBtn, { backgroundColor: colors.red, marginTop: 8 }]} onPress={() => cancelOrder(order.id)}>
-                  <Text style={[s.miniBtnText, { color: "#fff" }]}>Cancel Order</Text>
-                </Pressable>
-              )}
+              <View style={[s.row, { gap: 8, marginTop: 10, flexWrap: "wrap" }]}>
+                {order.payment_method?.includes("Online") && order.payment_status !== "confirmed" && (
+                  <>
+                    <Pressable
+                      style={[s.miniBtn, { backgroundColor: colors.blue, flexDirection: "row", alignItems: "center" }]}
+                      onPress={() => verifyOrderPaymentStatus(order.id)}
+                    >
+                      <FontAwesome6 name="rotate" size={12} color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={[s.miniBtnText, { color: "#fff" }]}>Verify Payment</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[s.miniBtn, { backgroundColor: colors.green, flexDirection: "row", alignItems: "center" }]}
+                      onPress={() =>
+                        initiateRazorpayPayment(
+                          order.id,
+                          { name: order.crop_name, price: Number(order.total_price || 0) / Number(order.quantity || 1) },
+                          Number(order.quantity || 1)
+                        )
+                      }
+                    >
+                      <FontAwesome6 name="credit-card" size={12} color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={[s.miniBtnText, { color: "#fff" }]}>Pay Online</Text>
+                    </Pressable>
+                  </>
+                )}
+                {["Order Placed", "Order Confirmed"].includes(order.status) && (
+                  <Pressable style={[s.miniBtn, { backgroundColor: colors.red }]} onPress={() => cancelOrder(order.id)}>
+                    <Text style={[s.miniBtnText, { color: "#fff" }]}>Cancel Order</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
           ))}
           {orders.history.length > 0 && <Text style={s.sectionHeading}>Order History</Text>}
@@ -955,17 +1061,8 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
           visible={rzpModalVisible}
           data={rzpCheckoutData}
           onSuccess={handleRazorpaySuccess}
-          onCancel={() => {
-            setRzpModalVisible(false);
-            setRzpCheckoutData(null);
-            setPendingOrderId("");
-          }}
-          onError={(err) => {
-            Alert.alert("Payment Error", err);
-            setRzpModalVisible(false);
-            setRzpCheckoutData(null);
-            setPendingOrderId("");
-          }}
+          onCancel={(reason) => handleRazorpayDismiss(reason || "Payment was cancelled", false)}
+          onError={(err) => handleRazorpayDismiss(err, true)}
         />
       )}
     </View>
@@ -1123,17 +1220,27 @@ function Notice({ tone, text }: { tone: "error" | "info" | "otp"; text: string }
 }
 
 function networkErrorMsg(): string {
-  if (typeof window !== "undefined" && window.location?.protocol === "https:" && API_URL.startsWith("http://")) {
-    return `Mixed Content Block: You opened the app over HTTPS (${window.location.host}), but the API is HTTP (${API_URL}). Please open http://localhost:8081 in your browser, or scan the QR code in Expo Go on your mobile device.`;
+  const apiUrl = getBaseApiUrl();
+  if (typeof window !== "undefined" && window.location?.protocol === "https:" && apiUrl.startsWith("http://")) {
+    return `Mixed Content Block: You opened the app over HTTPS (${window.location.host}), but the API is HTTP (${apiUrl}). Please open http://localhost:8081 in your browser, or scan the QR code in Expo Go on your mobile device.`;
   }
-  return `Unable to reach ${API_URL}. Ensure backend API is running (npm run dev:api) and EXPO_PUBLIC_API_URL is set in apps/mobile/.env for phone.`;
+  return `Unable to reach ${apiUrl}. Ensure backend API is running (npm run dev:api) and EXPO_PUBLIC_API_URL is set in apps/mobile/.env for phone.`;
 }
 
 // ─── API Helpers ─────────────────────────────────────────────────────────────
 async function apiRequest(path: string, body: Record<string, unknown>): Promise<ApiResult> {
   try {
-    const url = `${API_URL}${path}`;
-    const response = await fetch(url, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const url = `${getBaseApiUrl()}${path}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "Bypass-Tunnel-Reminder": "true",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
     const rawText = await response.text();
     let payload: Record<string, unknown> = {};
     try { payload = JSON.parse(rawText); } catch { /* ignore */ }
@@ -1146,7 +1253,15 @@ async function apiRequest(path: string, body: Record<string, unknown>): Promise<
 
 async function authGet(path: string, token: string): Promise<ApiResult> {
   try {
-    const response = await fetch(`${API_URL}${path}`, { method: "GET", headers: { Accept: "application/json", Authorization: `Token ${token}` } });
+    const response = await fetch(`${getBaseApiUrl()}${path}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Token ${token}`,
+        "Bypass-Tunnel-Reminder": "true",
+      },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
     const rawText = await response.text();
     let payload: Record<string, unknown> = {};
     try { payload = JSON.parse(rawText); } catch { /* ignore */ }
@@ -1159,7 +1274,17 @@ async function authGet(path: string, token: string): Promise<ApiResult> {
 
 async function authPost(path: string, body: Record<string, unknown>, token: string): Promise<ApiResult> {
   try {
-    const response = await fetch(`${API_URL}${path}`, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Token ${token}` }, body: JSON.stringify(body) });
+    const response = await fetch(`${getBaseApiUrl()}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Token ${token}`,
+        "Bypass-Tunnel-Reminder": "true",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
     const rawText = await response.text();
     let payload: Record<string, unknown> = {};
     try { payload = JSON.parse(rawText); } catch { /* ignore */ }
@@ -1172,7 +1297,17 @@ async function authPost(path: string, body: Record<string, unknown>, token: stri
 
 async function authPatch(path: string, body: Record<string, unknown>, token: string): Promise<ApiResult> {
   try {
-    const response = await fetch(`${API_URL}${path}`, { method: "PATCH", headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Token ${token}` }, body: JSON.stringify(body) });
+    const response = await fetch(`${getBaseApiUrl()}${path}`, {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Token ${token}`,
+        "Bypass-Tunnel-Reminder": "true",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
     const rawText = await response.text();
     let payload: Record<string, unknown> = {};
     try { payload = JSON.parse(rawText); } catch { /* ignore */ }

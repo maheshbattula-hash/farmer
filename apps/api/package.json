@@ -14,12 +14,15 @@
     "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-express": "^11.1.0",
     "bcryptjs": "^3.0.2",
+    "build": "^0.1.4",
     "dotenv": "^16.6.1",
     "mongoose": "^8.19.0",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
+    "npm": "^12.0.2",
     "razorpay": "^2.9.8",
     "reflect-metadata": "^0.2.2",
+    "run": "^2.1.4",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {

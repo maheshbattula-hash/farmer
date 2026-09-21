@@ -74,6 +74,7 @@ export class PaymentsService {
     const razorpay = this.getRazorpayInstance();
 
     try {
+      console.log(`[PAYMENT DEBUG] Creating Razorpay order: internalOrderId=${asIdString(order._id)}, amount=${totalPrice} INR (${amountInPaise} paise)`);
       const razorpayOrder = await razorpay.orders.create({
         amount: amountInPaise,
         currency: 'INR',
@@ -84,6 +85,8 @@ export class PaymentsService {
           customer_email: customer.email || '',
         },
       });
+
+      console.log(`[PAYMENT DEBUG] Gateway order created: gatewayOrderId=${razorpayOrder.id}, internalOrderId=${asIdString(order._id)}`);
 
       const existingGatewayDetails = order.payment_gateway_details || {};
       order.payment_gateway_details = {
@@ -109,7 +112,7 @@ export class PaymentsService {
     } catch (err: any) {
       const statusCode = err?.statusCode || err?.status || 400;
       const description = err?.error?.description || err?.message || 'Unknown gateway error';
-      console.error('[Razorpay API Error]', {
+      console.error('[PAYMENT DEBUG] Razorpay API order creation failed:', {
         statusCode,
         code: err?.error?.code || 'GATEWAY_ERROR',
         description,
@@ -130,14 +133,13 @@ export class PaymentsService {
   async verifyRazorpayPayment(customer: any, body: Record<string, unknown>) {
     const internalOrderId = String(body.internalOrderId || body.orderId || body.order_id || '');
     const razorpayOrderId = String(body.razorpay_order_id || body.razorpayOrderId || '');
-    const razorpayPaymentId = String(body.razorpay_payment_id || body.razorpayPaymentId || '');
+    let razorpayPaymentId = String(body.razorpay_payment_id || body.razorpayPaymentId || '');
     const razorpaySignature = String(body.razorpay_signature || body.razorpaySignature || '');
+
+    console.log(`[PAYMENT DEBUG] Backend verification request received: internalOrderId=${internalOrderId}, rzpOrderId=${razorpayOrderId}, rzpPaymentId=${razorpayPaymentId}, hasSignature=${Boolean(razorpaySignature)}`);
 
     if (!internalOrderId || !isValidObjectId(internalOrderId)) {
       fail('Invalid internal order ID.', 'invalid_order_id', HttpStatus.BAD_REQUEST);
-    }
-    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      fail('Missing Razorpay payment verification parameters.', 'missing_payment_params', HttpStatus.BAD_REQUEST);
     }
 
     const order: any = await this.orderModel.findOne({ _id: internalOrderId, customer: customer._id }).populate({
@@ -149,93 +151,157 @@ export class PaymentsService {
       fail('Order not found or unauthorized.', 'order_not_found', HttpStatus.NOT_FOUND);
     }
 
-    // Idempotency check: if order is already confirmed with the same payment reference
-    if (order.payment_status === 'confirmed' && order.payment_reference === razorpayPaymentId) {
+    // Idempotency check: if order is already confirmed
+    if (order.payment_status === 'confirmed') {
+      console.log(`[PAYMENT DEBUG] Order ${internalOrderId} is already confirmed (idempotent response).`);
       return ok('Payment already verified.', {
         verified: true,
         order: serializeCustomerOrder(order, await this.findUpdatesForOrder(order._id)),
+        gateway: {
+          provider: 'Razorpay',
+          method: order.payment_method || 'Online (Razorpay)',
+          razorpay_order_id: order.payment_gateway_details?.razorpay_order_id || razorpayOrderId,
+          razorpay_payment_id: order.payment_reference || razorpayPaymentId,
+          amount: Number(order.total_price || 0),
+          status: 'captured',
+        },
       });
     }
 
-    // Verify signature using HMAC SHA256
+    const targetRzpOrderId = razorpayOrderId || String(order.payment_gateway_details?.razorpay_order_id || '');
+    const razorpay = this.getRazorpayInstance();
     const secret = env.razorpayKeySecret;
-    if (!secret) {
-      fail('Razorpay Key Secret is missing on the server.', 'missing_key_secret', HttpStatus.INTERNAL_SERVER_ERROR);
+
+    let isVerified = false;
+    let failureReason = '';
+
+    // PATH 1: Verification using HMAC SHA256 Signature (standard callback)
+    if (targetRzpOrderId && razorpayPaymentId && razorpaySignature && secret) {
+      const generatedSignature = createHmac('sha256', secret)
+        .update(`${targetRzpOrderId}|${razorpayPaymentId}`)
+        .digest('hex');
+
+      if (generatedSignature === razorpaySignature) {
+        console.log(`[PAYMENT DEBUG] Cryptographic HMAC SHA256 signature verified successfully for order ${internalOrderId}.`);
+        isVerified = true;
+      } else {
+        console.warn(`[PAYMENT DEBUG] Signature mismatch for order ${internalOrderId}. Falling back to direct Razorpay API check.`);
+      }
     }
 
-    const generatedSignature = createHmac('sha256', secret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest('hex');
+    // PATH 2: Direct Gateway Verification via Razorpay API (handles Netbanking, UPI app redirects, missing callbacks)
+    if (!isVerified && targetRzpOrderId) {
+      try {
+        console.log(`[PAYMENT DEBUG] Querying Razorpay Gateway directly for order ${targetRzpOrderId}...`);
+        const paymentsList: any = await razorpay.orders.fetchPayments(targetRzpOrderId);
+        const payments = paymentsList?.items || [];
+        console.log(`[PAYMENT DEBUG] Razorpay Gateway returned ${payments.length} payment record(s) for order ${targetRzpOrderId}.`);
 
-    if (generatedSignature !== razorpaySignature) {
-      fail('Payment signature verification failed. Invalid signature.', 'invalid_signature', HttpStatus.BAD_REQUEST);
+        // Look for any successful (captured or authorized) payment
+        const successfulPayment = payments.find(
+          (p: any) => p.status === 'captured' || p.status === 'authorized'
+        );
+
+        if (successfulPayment) {
+          razorpayPaymentId = successfulPayment.id;
+          console.log(`[PAYMENT DEBUG] Found successful payment ${successfulPayment.id} with status '${successfulPayment.status}' on Razorpay.`);
+
+          // If payment is authorized but not yet captured, auto-capture it
+          if (successfulPayment.status === 'authorized') {
+            try {
+              console.log(`[PAYMENT DEBUG] Capturing authorized payment ${successfulPayment.id}...`);
+              await razorpay.payments.capture(successfulPayment.id, successfulPayment.amount, successfulPayment.currency || 'INR');
+              console.log(`[PAYMENT DEBUG] Payment ${successfulPayment.id} successfully captured.`);
+            } catch (captureErr: any) {
+              console.warn('[PAYMENT DEBUG] Auto-capture note:', captureErr?.message);
+            }
+          }
+
+          isVerified = true;
+        } else {
+          // Check if any payment failed
+          const failedPayment = payments.find((p: any) => p.status === 'failed');
+          if (failedPayment) {
+            failureReason = failedPayment.error_description || failedPayment.error_reason || 'Payment was declined by your bank or payment provider.';
+            console.log(`[PAYMENT DEBUG] Gateway reported failed payment: ${failureReason}`);
+          }
+        }
+      } catch (gatewayErr: any) {
+        console.error('[PAYMENT DEBUG] Error querying Razorpay API:', gatewayErr?.message);
+      }
     }
 
-    // Verify Razorpay order ID matches stored order ID if previously created
-    const storedRzpOrderId = order.payment_gateway_details?.razorpay_order_id;
-    if (storedRzpOrderId && storedRzpOrderId !== razorpayOrderId) {
-      fail('Razorpay order ID mismatch.', 'order_id_mismatch', HttpStatus.BAD_REQUEST);
-    }
-
-    // Mark order as PAID
-    order.payment_status = 'confirmed';
-    order.payment_method = 'Online (Razorpay)';
-    order.payment_provider = 'Razorpay';
-    order.payment_reference = razorpayPaymentId;
-    order.payment_gateway_details = {
-      ...(order.payment_gateway_details || {}),
-      razorpay_order_id: razorpayOrderId,
-      razorpay_payment_id: razorpayPaymentId,
-      razorpay_signature: razorpaySignature,
-      verified_at: new Date().toISOString(),
-    };
-    if (order.status === 'Order Placed') {
-      order.status = 'Order Confirmed';
-    }
-
-    await order.save();
-
-    await this.recordOrderUpdate(order._id, 'Order Confirmed', order.current_location || 'Razorpay Payment Verified');
-
-    const farmerId = order.crop?.farmer?._id || order.crop?.farmer;
-    await Promise.all([
-      this.createNotification(
-        order.customer,
-        'Payment successful',
-        `Payment of ₹${order.total_price} confirmed for ${order.crop?.name || 'your order'}.`,
-        'payment',
-        {
-          order_id: asIdString(order._id),
-          razorpay_payment_id: razorpayPaymentId,
-        },
-      ),
-      this.createNotification(
-        farmerId,
-        'Buyer payment received',
-        `Online payment received via Razorpay for ${order.crop?.name || 'a crop order'}.`,
-        'payment',
-        {
-          order_id: asIdString(order._id),
-          razorpay_payment_id: razorpayPaymentId,
-        },
-      ),
-    ]);
-
-    return ok('Payment successful and verified!', {
-      verified: true,
-      order: serializeCustomerOrder(order, await this.findUpdatesForOrder(order._id)),
-      gateway: {
-        provider: 'Razorpay',
-        method: 'Online',
-        razorpay_order_id: razorpayOrderId,
+    // If verification succeeded, confirm order in database
+    if (isVerified && razorpayPaymentId) {
+      order.payment_status = 'confirmed';
+      order.payment_method = 'Online (Razorpay)';
+      order.payment_provider = 'Razorpay';
+      order.payment_reference = razorpayPaymentId;
+      order.payment_gateway_details = {
+        ...(order.payment_gateway_details || {}),
+        razorpay_order_id: targetRzpOrderId,
         razorpay_payment_id: razorpayPaymentId,
-        amount: Number(order.total_price || 0),
-        status: 'captured',
-      },
-      notification: serializeNotification({
-        title: 'Payment successful',
-        body: `Payment ID: ${razorpayPaymentId}`,
-      }),
+        razorpay_signature: razorpaySignature || 'verified_via_gateway_api',
+        verified_at: new Date().toISOString(),
+      };
+      if (order.status === 'Order Placed' || order.status === 'PENDING') {
+        order.status = 'Order Confirmed';
+      }
+
+      await order.save();
+      console.log(`[PAYMENT DEBUG] Database payment status updated: orderId=${internalOrderId}, status=${order.status}, payment_status=confirmed, payment_reference=${razorpayPaymentId}`);
+
+      await this.recordOrderUpdate(order._id, 'Order Confirmed', order.current_location || 'Razorpay Online Payment Verified');
+
+      const farmerId = order.crop?.farmer?._id || order.crop?.farmer;
+      await Promise.all([
+        this.createNotification(
+          order.customer,
+          'Payment successful',
+          `Payment of ₹${order.total_price} confirmed for ${order.crop?.name || 'your order'}.`,
+          'payment',
+          {
+            order_id: asIdString(order._id),
+            razorpay_payment_id: razorpayPaymentId,
+          },
+        ),
+        this.createNotification(
+          farmerId,
+          'Buyer payment received',
+          `Online payment received via Razorpay for ${order.crop?.name || 'a crop order'}.`,
+          'payment',
+          {
+            order_id: asIdString(order._id),
+            razorpay_payment_id: razorpayPaymentId,
+          },
+        ),
+      ]);
+
+      return ok('Payment successful and verified!', {
+        verified: true,
+        order: serializeCustomerOrder(order, await this.findUpdatesForOrder(order._id)),
+        gateway: {
+          provider: 'Razorpay',
+          method: 'Online (Razorpay)',
+          razorpay_order_id: targetRzpOrderId,
+          razorpay_payment_id: razorpayPaymentId,
+          amount: Number(order.total_price || 0),
+          status: 'captured',
+        },
+        notification: serializeNotification({
+          title: 'Payment successful',
+          body: `Payment ID: ${razorpayPaymentId}`,
+        }),
+      });
+    }
+
+    // If verification did not succeed
+    console.log(`[PAYMENT DEBUG] Verification incomplete for order ${internalOrderId}: ${failureReason || 'Payment pending or not completed'}`);
+    return ok('Payment verification result', {
+      verified: false,
+      payment_status: failureReason ? 'failed' : 'pending',
+      message: failureReason || 'Payment has not been confirmed by your bank/gateway yet. If you completed payment, please check your Orders tab in a few moments.',
+      order: serializeCustomerOrder(order, await this.findUpdatesForOrder(order._id)),
     });
   }
 
@@ -246,6 +312,34 @@ export class PaymentsService {
     const order: any = await this.orderModel.findOne({ _id: orderId, customer: customer._id });
     if (!order) {
       fail('Order not found', 'order_not_found', HttpStatus.NOT_FOUND);
+    }
+
+    // Auto-sync pending online orders with Razorpay Gateway
+    if (order.payment_status === 'pending' && order.payment_gateway_details?.razorpay_order_id) {
+      const rzpOrderId = String(order.payment_gateway_details.razorpay_order_id);
+      try {
+        const razorpay = this.getRazorpayInstance();
+        const paymentsList: any = await razorpay.orders.fetchPayments(rzpOrderId);
+        const successful = paymentsList?.items?.find((p: any) => p.status === 'captured' || p.status === 'authorized');
+        if (successful) {
+          order.payment_status = 'confirmed';
+          order.payment_reference = successful.id;
+          order.payment_method = 'Online (Razorpay)';
+          order.payment_provider = 'Razorpay';
+          order.payment_gateway_details = {
+            ...order.payment_gateway_details,
+            razorpay_payment_id: successful.id,
+            verified_at: new Date().toISOString(),
+          };
+          if (order.status === 'Order Placed' || order.status === 'PENDING') {
+            order.status = 'Order Confirmed';
+          }
+          await order.save();
+          console.log(`[PAYMENT DEBUG] Order ${orderId} auto-synced to confirmed via getPaymentStatus.`);
+        }
+      } catch (err: any) {
+        console.warn(`[PAYMENT DEBUG] Could not auto-sync status for order ${orderId}:`, err?.message);
+      }
     }
 
     return ok('Payment status loaded', {

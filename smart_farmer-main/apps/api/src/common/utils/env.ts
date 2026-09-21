@@ -49,7 +49,7 @@ export const env = {
   repoRoot,
   mediaRoot: path.join(workspaceRoot, 'media'),
   uploadsRoot: path.join(workspaceRoot, 'media', 'uploads'),
-  apiPort: int('API_PORT', 8000),
+  apiPort: int('PORT', int('API_PORT', 8000)),
   mongodbUri: value('MONGODB_URI', 'mongodb://127.0.0.1:27017'),
   mongodbName: value('MONGODB_NAME', 'smart_farmer'),
   corsAllowedOrigins: list('CORS_ALLOWED_ORIGINS', list('DJANGO_CORS_ALLOWED_ORIGINS', [

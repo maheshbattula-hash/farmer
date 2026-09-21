@@ -75,7 +75,9 @@ export function resolveApiUrl(): string {
     extractHost((Constants.expoGoConfig as ExpoGoConfigWithDebuggerHost | null)?.debuggerHost) ||
     extractHost((Constants.platform as ExpoConfigWithHost | null)?.hostUri);
 
-  if (manualUrl) {
+  const activeTunnelUrl = "https://said-dedicated-vehicles-patients.trycloudflare.com";
+
+  if (manualUrl && !manualUrl.includes("popularity-cabin")) {
     // If running on a physical phone or Expo Go and the user has localhost/127.0.0.1 configured,
     // swap localhost with the host machine IP so requests don't fail against the phone's loopback
     if (host && (manualUrl.includes("localhost") || manualUrl.includes("127.0.0.1"))) {
@@ -84,11 +86,17 @@ export function resolveApiUrl(): string {
     return manualUrl;
   }
 
+  // When Metro is running via Expo Tunnel (exp.direct), Metro does NOT proxy port 8000.
+  // We automatically route API requests to the active Cloudflare tunnel for port 8000.
+  if (host && (host.includes("exp.direct") || host.includes("trycloudflare") || host.includes("loca.lt") || host.includes("ngrok"))) {
+    return activeTunnelUrl;
+  }
+
   if (host) {
     return `http://${host}:8000`;
   }
 
-  return "http://127.0.0.1:8000";
+  return activeTunnelUrl;
 }
 
 export function resolveWebUrl(): string {

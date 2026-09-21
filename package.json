@@ -24,11 +24,13 @@
     "dev:mobile:fix": "powershell -ExecutionPolicy Bypass -File .\\scripts\\dev\\start-mobile-clear.ps1",
     "dev:mobile:lan": "npm --workspace apps/mobile run start:lan",
     "dev:mobile:tunnel": "npm --workspace apps/mobile run start:tunnel",
+    "dev:mobile:localtunnel": "npm --workspace apps/mobile run start:localtunnel",
     "start:mobile": "npm run dev:mobile",
     "start:mobile:clear": "npm run dev:mobile:clear",
     "start:mobile:fix": "npm run dev:mobile:fix",
     "start:mobile:lan": "npm run dev:mobile:lan",
-    "start:mobile:tunnel": "npm run dev:mobile:tunnel"
+    "start:mobile:tunnel": "npm run dev:mobile:tunnel",
+    "start:mobile:localtunnel": "npm run dev:mobile:localtunnel"
   },
   "engines": {
     "node": ">=20.19.0"
