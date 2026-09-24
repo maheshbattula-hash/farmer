@@ -1,6 +1,15 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST || 'smtp.gmail.com',
+  port: Number(process.env.MAIL_PORT || 587),
+  secure: process.env.MAIL_SECURE === 'true',
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASSWORD,
+  },
+  requireTLS: process.env.MAIL_USE_TLS !== 'false',
+});
 
 export async function sendEmailMessage(
   recipient: string,
@@ -11,16 +20,10 @@ export async function sendEmailMessage(
     return;
   }
 
-  const from = process.env.MAIL_FROM || 'onboarding@resend.dev';
-
-  const { error } = await resend.emails.send({
-    from,
-    to: [recipient],
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM || process.env.MAIL_USER,
+    to: recipient,
     subject,
     text: body,
   });
-
-  if (error) {
-    throw new Error(`Resend email failed: ${error.message}`);
-  }
 }
