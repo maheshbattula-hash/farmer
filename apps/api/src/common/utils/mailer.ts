@@ -1,16 +1,3 @@
-import nodemailer from 'nodemailer';
-
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST || 'smtp.gmail.com',
-  port: Number(process.env.MAIL_PORT || 587),
-  secure: process.env.MAIL_SECURE === 'true',
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASSWORD,
-  },
-  requireTLS: process.env.MAIL_USE_TLS !== 'false',
-});
-
 export async function sendEmailMessage(
   recipient: string,
   subject: string,
@@ -20,10 +7,41 @@ export async function sendEmailMessage(
     return;
   }
 
-  await transporter.sendMail({
-    from: process.env.MAIL_FROM || process.env.MAIL_USER,
-    to: recipient,
-    subject,
-    text: body,
+  const apiKey = process.env.BREVO_API_KEY;
+  const fromEmail =
+    process.env.MAIL_FROM || 'maheshbattula444@gmail.com';
+  const fromName = process.env.MAIL_FROM_NAME || 'Smart Farmer';
+
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY is not configured');
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: {
+        name: fromName,
+        email: fromEmail,
+      },
+      to: [
+        {
+          email: recipient,
+        },
+      ],
+      subject,
+      textContent: body,
+    }),
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Brevo email failed (${response.status}): ${errorText}`,
+    );
+  }
 }
