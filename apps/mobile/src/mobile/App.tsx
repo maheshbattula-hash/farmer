@@ -689,20 +689,46 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
 
   const handleRazorpaySuccess = async (rzpPayload: RazorpaySuccessPayload) => {
     setRzpModalVisible(false);
-    setPayBusy("Verifying payment with server...");
+    setPayBusy("Verifying payment with bank & Razorpay...");
     const orderIdToVerify = pendingOrderId;
-    const res = await authPost("/api/payments/verify", {
-      internalOrderId: orderIdToVerify,
-      razorpay_order_id: rzpPayload.razorpay_order_id,
-      razorpay_payment_id: rzpPayload.razorpay_payment_id,
-      razorpay_signature: rzpPayload.razorpay_signature,
-    }, token);
+
+    let attempts = 0;
+    let verified = false;
+    let finalRes: any = null;
+
+    // Retry loop for UPI app returns where gateway confirmation takes 1-3 seconds
+    while (attempts < 3 && !verified) {
+      attempts++;
+      finalRes = await authPost("/api/payments/verify", {
+        internalOrderId: orderIdToVerify,
+        razorpay_order_id: rzpPayload.razorpay_order_id,
+        razorpay_payment_id: rzpPayload.razorpay_payment_id,
+        razorpay_signature: rzpPayload.razorpay_signature,
+      }, token);
+
+      if (finalRes.ok && finalRes.payload?.verified) {
+        verified = true;
+        break;
+      }
+
+      // If gateway reported an explicit failure, don't keep polling
+      if (!finalRes.ok || finalRes.payload?.payment_status === "failed") {
+        break;
+      }
+
+      // If pending and we have attempts remaining, wait 2 seconds and re-check
+      if (attempts < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+
     setPayBusy("");
 
-    if (res.ok && res.payload.verified) {
-      const ref = txt((res.payload.gateway as any)?.razorpay_payment_id) || rzpPayload.razorpay_payment_id || "CONFIRMED";
+    if (verified && finalRes?.payload?.verified) {
+      const ref = txt((finalRes.payload.gateway as any)?.razorpay_payment_id) || rzpPayload.razorpay_payment_id || "CONFIRMED";
+      const methodLabel = txt((finalRes.payload.gateway as any)?.method) || "Online Payment (Razorpay)";
       setPaySuccess({
-        method: "Online Payment (Razorpay)",
+        method: methodLabel,
         reference: ref,
         cropName: checkout?.crop?.name || "Order",
         amount: checkout ? (Number(checkout.crop.price || 0) * checkout.qty).toFixed(2) : "",
@@ -717,10 +743,17 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
       );
     } else {
       loadOrders();
-      Alert.alert(
-        "Payment Verification Notice",
-        res.message || "Payment is pending confirmation. Your order has been placed and you can check its status anytime in your Orders tab."
-      );
+      if (finalRes?.payload?.payment_status === "failed") {
+        Alert.alert(
+          "Payment Failed ⚠️",
+          finalRes.message || "Payment was declined by your bank or provider. Your order is saved as pending in your Orders tab so you can retry."
+        );
+      } else {
+        Alert.alert(
+          "Payment Verification Notice",
+          finalRes?.message || "Payment is pending confirmation with your bank. Your order has been placed and you can verify or retry anytime in your Orders tab."
+        );
+      }
       setCheckout(null);
       setRzpCheckoutData(null);
       setPendingOrderId("");
@@ -744,10 +777,11 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
     }, token);
     setPayBusy("");
 
-    if (res.ok && res.payload.verified) {
+    if (res.ok && res.payload?.verified) {
       const ref = txt((res.payload.gateway as any)?.razorpay_payment_id) || "CONFIRMED";
+      const methodLabel = txt((res.payload.gateway as any)?.method) || "Online Payment (Razorpay)";
       setPaySuccess({
-        method: "Online Payment (Razorpay)",
+        method: methodLabel,
         reference: ref,
         cropName: checkout?.crop?.name || "Order",
         amount: checkout ? (Number(checkout.crop.price || 0) * checkout.qty).toFixed(2) : "",
@@ -768,6 +802,9 @@ function CustomerShell({ user, token, logout }: { user: User; token: string; log
       if (isError) {
         alertTitle = "Payment Incomplete";
         alertMsg = message ? `${message}\n\nYour order is saved as pending in your Orders tab so you can retry.` : alertMsg;
+      } else if (res.payload?.payment_status === "failed") {
+        alertTitle = "Payment Failed";
+        alertMsg = res.message || "Payment could not be completed. Your order is saved as pending in your Orders tab so you can retry.";
       } else {
         alertTitle = "Payment Cancelled";
         alertMsg = "Payment was cancelled. Your order is saved as pending in your Orders tab so you can retry.";

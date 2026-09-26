@@ -189,6 +189,8 @@ export class PaymentsService {
       }
     }
 
+    let successfulPaymentRecord: any = null;
+
     // PATH 2: Direct Gateway Verification via Razorpay API (handles Netbanking, UPI app redirects, missing callbacks)
     if (!isVerified && targetRzpOrderId) {
       try {
@@ -203,6 +205,7 @@ export class PaymentsService {
         );
 
         if (successfulPayment) {
+          successfulPaymentRecord = successfulPayment;
           razorpayPaymentId = successfulPayment.id;
           console.log(`[PAYMENT DEBUG] Found successful payment ${successfulPayment.id} with status '${successfulPayment.status}' on Razorpay.`);
 
@@ -231,10 +234,33 @@ export class PaymentsService {
       }
     }
 
-    // If verification succeeded, confirm order in database
+    // Determine specific payment instrument (UPI, Cards, Netbanking, Wallet)
+    let paymentMethodLabel = 'Online (Razorpay)';
+    let paymentVpa = '';
+
     if (isVerified && razorpayPaymentId) {
+      if (!successfulPaymentRecord) {
+        try {
+          successfulPaymentRecord = await razorpay.payments.fetch(razorpayPaymentId);
+        } catch (_) {}
+      }
+
+      if (successfulPaymentRecord) {
+        const pMethod = String(successfulPaymentRecord.method || '').toLowerCase();
+        paymentVpa = String(successfulPaymentRecord.vpa || '');
+        if (pMethod === 'upi') {
+          paymentMethodLabel = 'Online (UPI - Razorpay)';
+        } else if (pMethod === 'card') {
+          paymentMethodLabel = 'Online (Card - Razorpay)';
+        } else if (pMethod === 'netbanking') {
+          paymentMethodLabel = 'Online (Netbanking - Razorpay)';
+        } else if (pMethod === 'wallet') {
+          paymentMethodLabel = 'Online (Wallet - Razorpay)';
+        }
+      }
+
       order.payment_status = 'confirmed';
-      order.payment_method = 'Online (Razorpay)';
+      order.payment_method = paymentMethodLabel;
       order.payment_provider = 'Razorpay';
       order.payment_reference = razorpayPaymentId;
       order.payment_gateway_details = {
@@ -242,6 +268,8 @@ export class PaymentsService {
         razorpay_order_id: targetRzpOrderId,
         razorpay_payment_id: razorpayPaymentId,
         razorpay_signature: razorpaySignature || 'verified_via_gateway_api',
+        method: paymentMethodLabel,
+        vpa: paymentVpa || undefined,
         verified_at: new Date().toISOString(),
       };
       if (order.status === 'Order Placed' || order.status === 'PENDING') {
@@ -249,7 +277,7 @@ export class PaymentsService {
       }
 
       await order.save();
-      console.log(`[PAYMENT DEBUG] Database payment status updated: orderId=${internalOrderId}, status=${order.status}, payment_status=confirmed, payment_reference=${razorpayPaymentId}`);
+      console.log(`[PAYMENT DEBUG] Database payment status updated: orderId=${internalOrderId}, status=${order.status}, payment_status=confirmed, method=${paymentMethodLabel}, reference=${razorpayPaymentId}`);
 
       await this.recordOrderUpdate(order._id, 'Order Confirmed', order.current_location || 'Razorpay Online Payment Verified');
 
@@ -282,9 +310,10 @@ export class PaymentsService {
         order: serializeCustomerOrder(order, await this.findUpdatesForOrder(order._id)),
         gateway: {
           provider: 'Razorpay',
-          method: 'Online (Razorpay)',
+          method: paymentMethodLabel,
           razorpay_order_id: targetRzpOrderId,
           razorpay_payment_id: razorpayPaymentId,
+          vpa: paymentVpa || undefined,
           amount: Number(order.total_price || 0),
           status: 'captured',
         },
@@ -322,13 +351,21 @@ export class PaymentsService {
         const paymentsList: any = await razorpay.orders.fetchPayments(rzpOrderId);
         const successful = paymentsList?.items?.find((p: any) => p.status === 'captured' || p.status === 'authorized');
         if (successful) {
+          let pMethodLabel = 'Online (Razorpay)';
+          if (successful.method === 'upi') pMethodLabel = 'Online (UPI - Razorpay)';
+          else if (successful.method === 'card') pMethodLabel = 'Online (Card - Razorpay)';
+          else if (successful.method === 'netbanking') pMethodLabel = 'Online (Netbanking - Razorpay)';
+          else if (successful.method === 'wallet') pMethodLabel = 'Online (Wallet - Razorpay)';
+
           order.payment_status = 'confirmed';
           order.payment_reference = successful.id;
-          order.payment_method = 'Online (Razorpay)';
+          order.payment_method = pMethodLabel;
           order.payment_provider = 'Razorpay';
           order.payment_gateway_details = {
             ...order.payment_gateway_details,
             razorpay_payment_id: successful.id,
+            method: pMethodLabel,
+            vpa: successful.vpa || undefined,
             verified_at: new Date().toISOString(),
           };
           if (order.status === 'Order Placed' || order.status === 'PENDING') {

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RazorpayCheckoutModal — Web shim
  *
  * react-native-webview has no web support, so this file is loaded instead
@@ -86,11 +86,34 @@ export default function RazorpayCheckoutModal({
           description: `Payment for ${data.cropName || "Crop Order"}`,
           order_id: data.razorpayOrderId,
           prefill: {
+            method: "upi",
             name: data.customerName || "",
             email: data.customerEmail || "",
             contact: data.customerPhone || "",
           },
           theme: { color: "#1F6A3A" },
+          config: {
+            display: {
+              blocks: {
+                upi: {
+                  name: "Pay using UPI (PhonePe / GPay / Paytm / QR)",
+                  instruments: [{ method: "upi" }],
+                },
+                other: {
+                  name: "Cards, Netbanking & Wallets",
+                  instruments: [
+                    { method: "card" },
+                    { method: "netbanking" },
+                    { method: "wallet" },
+                  ],
+                },
+              },
+              sequence: ["block.upi", "block.other"],
+              preferences: {
+                show_default_blocks: true,
+              },
+            },
+          },
           handler: (response: RazorpaySuccessPayload) => {
             onSuccess(response);
           },

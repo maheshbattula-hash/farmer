@@ -3,6 +3,7 @@
     "name": "Smart Farmer Platform",
     "slug": "smart-farmer-app",
     "version": "1.1.1",
+    "scheme": "smartfarmer",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/splash-light.png",
